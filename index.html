@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Control de Gastos Pro</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" id="meta-theme-color" content="#2c3e50">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* VARIABLES DE TEMA (POR DEFECTO BÁSICO) */
+    :root {
+      --bg: #f4f7f6;
+      --card: #ffffff;
+      --text: #2c3e50;
+      --text-muted: #7f8c8d;
+      --accent: #3498db;
+      --footer-bg: #2c3e50;
+      --border: #eeeeee;
+      --coral-light: #ff8a7a; /* EL NUEVO COLOR CORAL */
+    }
+
+    /* TEMA OSCURO */
+    [data-theme="dark"] {
+      --bg: #121212;
+      --card: #1e1e1e;
+      --text: #e0e0e0;
+      --text-muted: #b0b0b0;
+      --accent: #bb86fc;
+      --footer-bg: #000000;
+      --border: #333333;
+    }
+
+    /* TEMA PASTEL */
+    [data-theme="pastel"] {
+      --bg: #fdf6f0;
+      --card: #ffffff;
+      --text: #6d5d6e;
+      --text-muted: #a790af;
+      --accent: #ffb7b2;
+      --footer-bg: #6d5d6e;
+      --border: #f0e0e0;
+    }
+
+    body { 
+      background: var(--bg); 
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+      color: var(--text); 
+      padding-bottom: 90px;
+      transition: background 0.3s, color 0.3s;
+    }
+    
+    .header-nav { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 0; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .year-nav { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+    .year-btn { border: none; background: var(--bg); color: var(--text); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+
+    .month-selector { display: flex; overflow-x: auto; gap: 8px; padding: 12px 15px; scrollbar-width: none; }
+    .month-selector::-webkit-scrollbar { display: none; }
+    .btn-month { min-width: 70px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); padding: 6px 10px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+    .btn-month.active { background: var(--accent); color: #fff; border-color: var(--accent); box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+
+    .finance-card { background: var(--card); border-radius: 20px; padding: 18px; border: none; margin-bottom: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+    .card-title { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .amount-big { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.5px; }
+    
+    .row-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .row-item:last-child { border-bottom: none; }
+    
+    .status-dot { width: 14px; height: 14px; border-radius: 50%; cursor: pointer; border: 2px solid var(--card); box-shadow: 0 0 0 1px #ddd; }
+    .status-pagado { background: #2ecc71; }
+    .status-pendiente { background: #f1c40f; }
+    
+    .fixed-footer { position: fixed; bottom: 0; left: 0; width: 100%; height: 75px; background: var(--footer-bg); color: white; display: flex; align-items: center; padding: 0 10px; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+    .footer-col { flex: 1; text-align: center; border-right: 1px solid rgba(255,255,255,0.1); }
+    .footer-col:last-child { border-right: none; }
+    .footer-label { font-size: 0.6rem; opacity: 0.7; text-transform: uppercase; display: block; margin-bottom: 2px; }
+    .footer-val { font-size: 0.9rem; font-weight: 700; }
+
+    /* ESTILO CORAL PARA EL GASTO TOTAL */
+    .bg-coral-light { background-color: var(--coral-light) !important; color: white !important; }
+    .text-coral-light { color: var(--coral-light) !important; }
+
+    .btn-circle { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; background: var(--accent); color: white; font-size: 1.2rem; }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 360px) {
+      .amount-big { font-size: 1.2rem; }
+      .footer-val { font-size: 0.8rem; }
+      .btn-month { min-width: 60px; font-size: 0.75rem; }
+    }
+
+    #update-btn { display: none; background: #e74c3c; color: white; border: none; padding: 2px 8px; border-radius: 20px; font-size: 0.65rem; font-weight: 800; animation: pulse 2s infinite; margin-left: 5px; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    
+    .theme-btn { background: none; border: none; font-size: 1.2rem; padding: 5px; cursor: pointer; filter: grayscale(0.5); transition: 0.3s; }
+    .theme-btn:hover { filter: grayscale(0); transform: rotate(20deg); }
+
+    .form-control, .form-select { background-color: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .form-control:focus, .form-select:focus { background-color: var(--bg); color: var(--text); border-color: var(--accent); box-shadow: none; }
+    .modal-content { background-color: var(--card); color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <div class="header-nav">
+    <div class="container-fluid d-flex justify-content-between align-items-center px-3 mb-1">
+      <div class="d-flex align-items-center">
+        <button class="theme-btn" onclick="toggleTheme()" title="Cambiar Tema">🎨</button>
+        <span class="fw-bold ms-1" style="font-size: 0.9rem;">FINANZAS</span>
+        <button id="update-btn" onclick="window.location.reload(true)">UPDATE</button>
+      </div>
+      <div class="year-nav">
+        <button class="year-btn" onclick="changeYear(-1)">‹</button>
+        <span id="label-anio">2026</span>
+        <button class="year-btn" onclick="changeYear(1)">›</button>
+      </div>
+    </div>
+    <div class="month-selector" id="monthSelector"></div>
+  </div>
+
+  <div class="container-fluid px-3 pt-3">
+    <!-- Resumen Principal -->
+    <div class="row g-2 mb-3">
+      <div class="col-6" onclick="showModal('ingreso')" style="cursor:pointer">
+        <div class="finance-card bg-primary text-white border-0 mb-0">
+          <span class="footer-label text-white-50">Ingresos</span>
+          <div class="amount-big" id="res-ingresos">$0</div>
+        </div>
+      </div>
+      <div class="col-6">
+        <div class="finance-card mb-0 text-center" id="balanceCard">
+          <span class="footer-label">Disponible</span>
+          <div class="amount-big" id="res-balance">$0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gastos Fijos -->
+    <div class="finance-card">
+      <div class="card-title">
+        <span>Gastos Fijos</span>
+        <div class="d-flex gap-2">
+          <button id="btn-clonar" class="clonar-btn btn btn-sm border" style="display:none; font-size: 0.7rem;" onclick="clonarAnterior()">Copiar Anterior</button>
+          <button class="btn-circle" onclick="showModal('gasto')">+</button>
+        </div>
+      </div>
+      <div id="table-gastos"></div>
+    </div>
+
+    <!-- Tarjetas -->
+    <div class="finance-card">
+      <div class="card-title"><span>Tarjetas</span><button class="btn-circle" onclick="showModal('tarjeta')">+</button></div>
+      <div id="table-tarjetas"></div>
+    </div>
+
+    <!-- Ingresos Detalle -->
+    <div class="finance-card">
+      <div class="card-title"><span>Detalle Ingresos</span></div>
+      <div id="table-ingresos"></div>
+    </div>
+  </div>
+
+  <div class="fixed-footer">
+    <div class="footer-col"><span class="footer-label">Fijos</span><span class="footer-val" id="foot-fijos">$0</span></div>
+    <div class="footer-col"><span class="footer-label">Tarjetas</span><span class="footer-val" id="foot-tarjetas">$0</span></div>
+    <div class="footer-col">
+      <span class="footer-label">Total Gasto</span>
+      <span class="footer-val text-coral-light" id="res-gastos">$0</span>
+    </div>
+  </div>
+
+  <!-- Modales -->
+  <div class="modal fade" id="modalGeneric" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered mx-3">
+      <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+        <div class="modal-header border-0 pb-0"><h6 class="modal-title fw-bold" id="modalTitle">Registro</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <form id="formGeneric">
+          <div class="modal-body pt-2">
+            <input type="hidden" id="form-id"><input type="hidden" id="form-tipo">
+            <div class="mb-3"><label class="small text-muted mb-1">Descripción</label><input type="text" class="form-control" id="form-desc" required></div>
+            <div class="row g-2 mb-3">
+              <div class="col-7"><label class="small text-muted mb-1">Monto</label><input type="number" step="0.01" class="form-control" id="form-monto" required></div>
+              <div class="col-5"><label class="small text-muted mb-1">Categoría</label><select class="form-select" id="form-cat"></select></div>
+            </div>
+            <div class="mb-3"><label class="small text-muted mb-1">Notas (Opcional)</label><textarea class="form-control" id="form-notas" rows="2"></textarea></div>
+          </div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-link text-danger text-decoration-none me-auto px-0" id="btn-eliminar" style="display:none">Eliminar</button>
+            <button type="submit" class="btn btn-primary px-4 fw-bold" style="border-radius: 12px;">Guardar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalTarjeta" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered mx-3">
+      <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+        <div class="modal-header border-0 pb-0"><h6 class="fw-bold">Nueva Tarjeta</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <form id="formTarjeta">
+          <div class="modal-body pt-2">
+            <div class="mb-3"><label class="small text-muted mb-1">Compra</label><input type="text" class="form-control" id="card-desc" required></div>
+            <div class="row g-2">
+              <div class="col-8"><label class="small text-muted mb-1">Monto Total</label><input type="number" step="0.01" class="form-control" id="card-total" required></div>
+              <div class="col-4"><label class="small text-muted mb-1">Cuotas</label><input type="number" class="form-control" id="card-cuotas" required></div>
+            </div>
+          </div>
+          <div class="modal-footer border-0"><button type="submit" class="btn btn-primary w-100 fw-bold py-2" style="border-radius: 12px;">Registrar</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // --- LÓGICA DE TEMAS ---
+    const themes = ["basic", "dark", "pastel"];
+    let currentTheme = localStorage.getItem('app-theme') || 'basic';
+    document.documentElement.setAttribute('data-theme', currentTheme);
+
+    function toggleTheme() {
+      const nextIndex = (themes.indexOf(currentTheme) + 1) % themes.length;
+      currentTheme = themes[nextIndex];
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      localStorage.setItem('app-theme', currentTheme);
+      
+      // Cambiar color de barra de estado en mobile
+      const meta = document.getElementById('meta-theme-color');
+      const colors = { basic: "#2c3e50", dark: "#000000", pastel: "#6d5d6e" };
+      meta.setAttribute('content', colors[currentTheme]);
+    }
+
+    // --- LÓGICA DE SERVICE WORKER ---
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              document.getElementById('update-btn').style.display = 'inline-block';
+            }
+          });
+        });
+      });
+    }
+
+    const DB_KEY = 'finanzas_data_v3';
+    let db = JSON.parse(localStorage.getItem(DB_KEY)) || { principal: [], tarjetas: [], config: { cat_ing: ["Sueldo","Venta","Inversión","Otros"], cat_gas: ["Hogar","Servicios","Ocio","Comida","Transporte","Salud","Educación","Otros"] } };
+
+    function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+
+    const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    let mesAct = new Date().getMonth() + 1;
+    let anioAct = new Date().getFullYear();
+    
+    const mGeneric = new bootstrap.Modal(document.getElementById('modalGeneric'));
+    const mTarjeta = new bootstrap.Modal(document.getElementById('modalTarjeta'));
+
+    document.addEventListener('DOMContentLoaded', () => { initUI(); render(); });
+
+    function initUI() {
+      const cont = document.getElementById('monthSelector');
+      cont.innerHTML = '';
+      meses.forEach((m, i) => {
+        const b = document.createElement('button');
+        b.className = `btn-month ${i + 1 === mesAct ? 'active' : ''}`;
+        b.innerText = m;
+        b.onclick = () => { mesAct = i + 1; updateMonthUI(); render(); };
+        cont.appendChild(b);
+      });
+      document.getElementById('label-anio').innerText = anioAct;
+    }
+
+    function updateMonthUI() {
+      document.querySelectorAll('.btn-month').forEach((b, i) => b.classList.toggle('active', i + 1 === mesAct));
+    }
+
+    function changeYear(delta) { anioAct += delta; document.getElementById('label-anio').innerText = anioAct; render(); }
+
+    function render() {
+      const ingresos = db.principal.filter(it => it.mes == mesAct && it.anio == anioAct && it.tipo == 'Ingreso');
+      const gastosFijos = db.principal.filter(it => it.mes == mesAct && it.anio == anioAct && it.tipo == 'Gasto');
+      
+      let totalTarjetas = 0;
+      const tarjetasActivas = [];
+      db.tarjetas.forEach(t => {
+        const diff = (anioAct - t.anioInicio) * 12 + (mesAct - t.mesInicio);
+        if (diff >= 0 && diff < t.cuotasTotales) {
+          const montoCuota = t.montoTotal / t.cuotasTotales;
+          tarjetasActivas.push({ descripcion: t.descripcion, cuotaInfo: `${diff+1}/${t.cuotasTotales}`, montoCuota });
+          totalTarjetas += montoCuota;
+        }
+      });
+
+      const totalIng = ingresos.reduce((s, i) => s + i.monto, 0);
+      const totalFijos = gastosFijos.reduce((s, i) => s + i.monto, 0);
+      const totalGas = totalFijos + totalTarjetas;
+      const balance = totalIng - totalGas;
+
+      document.getElementById('res-ingresos').innerText = f(totalIng);
+      document.getElementById('res-gastos').innerText = f(totalGas);
+      document.getElementById('res-balance').innerText = f(balance);
+      document.getElementById('foot-fijos').innerText = f(totalFijos);
+      document.getElementById('foot-tarjetas').innerText = f(totalTarjetas);
+      
+      const bc = document.getElementById('balanceCard');
+      bc.className = balance >= 0 ? 'finance-card mb-0 text-center bg-success bg-opacity-10 text-success' : 'finance-card mb-0 text-center bg-danger bg-opacity-10 text-danger';
+      
+      document.getElementById('btn-clonar').style.display = (gastosFijos.length === 0) ? 'block' : 'none';
+      
+      renderList('table-gastos', gastosFijos);
+      renderList('table-ingresos', ingresos);
+      renderListT(tarjetasActivas);
+    }
+
+    function renderList(id, items) {
+      const container = document.getElementById(id);
+      container.innerHTML = items.length ? '' : '<p class="text-muted small py-2 mb-0">Sin registros</p>';
+      items.forEach(it => {
+        const div = document.createElement('div');
+        div.className = 'row-item';
+        const isGasto = it.tipo === 'Gasto';
+        const estadoClase = it.estado === 'Pagado' ? 'status-pagado' : 'status-pendiente';
+        const notaHtml = it.notes || it.notas ? `<div class="text-info mt-1" style="font-size:0.65rem; font-style: italic;">${it.notes || it.notas}</div>` : '';
+
+        div.innerHTML = `
+          <div style="flex:1" onclick="showModal('${it.tipo.toLowerCase()}', '${it.id}')">
+            <div class="fw-bold small">${it.descripcion}</div>
+            <div class="text-muted" style="font-size:0.7rem">${it.categoria}</div>
+            ${notaHtml}
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="fw-bold small" onclick="showModal('${it.tipo.toLowerCase()}', '${it.id}')">${f(it.monto)}</div>
+            ${isGasto ? `<div class="status-dot ${estadoClase}" onclick="toggleStatus(event, '${it.id}')"></div>` : ''}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function renderListT(items) {
+      const container = document.getElementById('table-tarjetas');
+      container.innerHTML = items.length ? '' : '<p class="text-muted small py-2 mb-0">Sin cuotas este mes</p>';
+      items.forEach(it => {
+        const div = document.createElement('div'); div.className = 'row-item';
+        div.innerHTML = `<div><div class="fw-bold small">${it.descripcion}</div><div class="text-muted" style="font-size:0.7rem">Cuota ${it.cuotaInfo}</div></div><div class="fw-bold small">${f(it.montoCuota)}</div>`;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleStatus(e, id) {
+      e.stopPropagation();
+      const idx = db.principal.findIndex(it => it.id === id);
+      if(idx !== -1) {
+        db.principal[idx].estado = db.principal[idx].estado === 'Pagado' ? 'Pendiente' : 'Pagado';
+        saveDB(); render();
+      }
+    }
+
+    function clonarAnterior() {
+      if(!confirm("¿Copiar gastos fijos del mes anterior?")) return;
+      const mOrig = mesAct === 1 ? 12 : mesAct - 1;
+      const aOrig = mesAct === 1 ? anioAct - 1 : anioAct;
+      const aClonar = db.principal.filter(it => it.mes == mOrig && it.anio == aOrig && it.tipo == 'Gasto');
+      aClonar.forEach(it => {
+        db.principal.push({...it, id: crypto.randomUUID(), mes: mesAct, anio: anioAct, estado: 'Pendiente'});
+      });
+      saveDB(); render();
+    }
+
+    function showModal(tipo, id = null) {
+      if(tipo === 'tarjeta') { document.getElementById('formTarjeta').reset(); mTarjeta.show(); return; }
+      const form = document.getElementById('formGeneric');
+      form.reset();
+      const it = id ? db.principal.find(x => x.id === id) : null;
+      document.getElementById('form-id').value = id || '';
+      document.getElementById('form-tipo').value = tipo === 'ingreso' ? 'Ingreso' : 'Gasto';
+      document.getElementById('modalTitle').innerText = id ? 'Editar Registro' : (tipo === 'ingreso' ? '💰 Ingreso' : '📌 Gasto');
+      document.getElementById('btn-eliminar').style.display = id ? 'block' : 'none';
+      const sel = document.getElementById('form-cat'); sel.innerHTML = '';
+      (tipo === 'ingreso' ? db.config.cat_ing : db.config.cat_gas).forEach(c => {
+        const o = document.createElement('option'); o.value = c; o.innerText = c; sel.appendChild(o);
+      });
+      if(it) {
+        document.getElementById('form-desc').value = it.descripcion;
+        document.getElementById('form-monto').value = it.monto;
+        document.getElementById('form-cat').value = it.categoria;
+        document.getElementById('form-notas').value = it.notes || it.notas || '';
+      }
+      mGeneric.show();
+    }
+
+    document.getElementById('formGeneric').onsubmit = (e) => {
+      e.preventDefault();
+      const id = document.getElementById('form-id').value;
+      const data = {
+        id: id || crypto.randomUUID(),
+        mes: mesAct, anio: anioAct,
+        tipo: document.getElementById('form-tipo').value,
+        descripcion: document.getElementById('form-desc').value,
+        monto: parseFloat(document.getElementById('form-monto').value),
+        categoria: document.getElementById('form-cat').value,
+        notas: document.getElementById('form-notas').value,
+        estado: id ? db.principal.find(x => x.id === id).estado : 'Pendiente'
+      };
+      if(id) {
+        const idx = db.principal.findIndex(x => x.id === id);
+        db.principal[idx] = data;
+      } else {
+        db.principal.push(data);
+      }
+      saveDB(); render(); mGeneric.hide();
+    };
+
+    document.getElementById('btn-eliminar').onclick = () => {
+      if(confirm("¿Eliminar?")) {
+        const id = document.getElementById('form-id').value;
+        db.principal = db.principal.filter(x => x.id !== id);
+        saveDB(); render(); mGeneric.hide();
+      }
+    };
+
+    document.getElementById('formTarjeta').onsubmit = (e) => {
+      e.preventDefault();
+      db.tarjetas.push({
+        id: crypto.randomUUID(),
+        mesInicio: mesAct, anioInicio: anioAct,
+        descripcion: document.getElementById('card-desc').value,
+        montoTotal: parseFloat(document.getElementById('card-total').value),
+        cuotasTotales: parseInt(document.getElementById('card-cuotas').value)
+      });
+      saveDB(); render(); mTarjeta.hide();
+    };
+
+    function f(v) { return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(v || 0); }
+  </script>
+</body>
+</html>

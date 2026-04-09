@@ -1,0 +1,17 @@
+{
+  "name": "Mi Control Financiero Pro",
+  "short_name": "Finanzas Pro",
+  "description": "Gestión de finanzas personales conectada a Google Sheets",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#0d6efd",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2654/2654211.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
