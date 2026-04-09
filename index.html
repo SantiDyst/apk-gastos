@@ -200,16 +200,20 @@
   <div class="modal fade" id="modalTarjeta" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered mx-3">
       <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-        <div class="modal-header border-0 pb-0"><h6 class="fw-bold">Nueva Tarjeta</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-header border-0 pb-0"><h6 class="fw-bold" id="modalTarjetaTitle">Nueva Tarjeta</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <form id="formTarjeta">
           <div class="modal-body pt-2">
+            <input type="hidden" id="card-id">
             <div class="mb-3"><label class="small text-muted mb-1">Compra</label><input type="text" class="form-control" id="card-desc" required></div>
             <div class="row g-2">
               <div class="col-8"><label class="small text-muted mb-1">Monto Total</label><input type="number" step="0.01" class="form-control" id="card-total" required></div>
               <div class="col-4"><label class="small text-muted mb-1">Cuotas</label><input type="number" class="form-control" id="card-cuotas" required></div>
             </div>
           </div>
-          <div class="modal-footer border-0"><button type="submit" class="btn btn-primary w-100 fw-bold py-2" style="border-radius: 12px;">Registrar</button></div>
+          <div class="modal-footer border-0">
+            <button type="button" class="btn btn-link text-danger text-decoration-none me-auto px-0" id="btn-eliminar-tarjeta" style="display:none">Eliminar</button>
+            <button type="submit" class="btn btn-primary px-4 fw-bold py-2" style="border-radius: 12px;" id="btn-guardar-tarjeta">Registrar</button>
+          </div>
         </form>
       </div>
     </div>
@@ -291,7 +295,7 @@
         const diff = (anioAct - t.anioInicio) * 12 + (mesAct - t.mesInicio);
         if (diff >= 0 && diff < t.cuotasTotales) {
           const montoCuota = t.montoTotal / t.cuotasTotales;
-          tarjetasActivas.push({ descripcion: t.descripcion, cuotaInfo: `${diff+1}/${t.cuotasTotales}`, montoCuota });
+          tarjetasActivas.push({ id: t.id, descripcion: t.descripcion, cuotaInfo: `${diff+1}/${t.cuotasTotales}`, montoCuota });
           totalTarjetas += montoCuota;
         }
       });
@@ -347,7 +351,18 @@
       container.innerHTML = items.length ? '' : '<p class="text-muted small py-2 mb-0">Sin cuotas este mes</p>';
       items.forEach(it => {
         const div = document.createElement('div'); div.className = 'row-item';
-        div.innerHTML = `<div><div class="fw-bold small">${it.descripcion}</div><div class="text-muted" style="font-size:0.7rem">Cuota ${it.cuotaInfo}</div></div><div class="fw-bold small">${f(it.montoCuota)}</div>`;
+        div.onclick = () => showModal('tarjeta', it.id);
+        const itOriginal = db.tarjetas.find(x => x.id === it.id);
+        const notaHtml = itOriginal && (itOriginal.notes || itOriginal.notas) ? `<div class="text-info mt-1" style="font-size:0.65rem; font-style: italic;">${itOriginal.notes || itOriginal.notas}</div>` : '';
+        
+        div.innerHTML = `
+          <div style="flex:1">
+            <div class="fw-bold small">${it.descripcion}</div>
+            <div class="text-info" style="font-size:0.7rem">Cuota ${it.cuotaInfo}</div>
+            ${notaHtml}
+          </div>
+          <div class="fw-bold small">${f(it.montoCuota)}</div>
+        `;
         container.appendChild(div);
       });
     }
@@ -373,7 +388,22 @@
     }
 
     function showModal(tipo, id = null) {
-      if(tipo === 'tarjeta') { document.getElementById('formTarjeta').reset(); mTarjeta.show(); return; }
+      if(tipo === 'tarjeta') { 
+        const form = document.getElementById('formTarjeta');
+        form.reset();
+        const it = id ? db.tarjetas.find(x => x.id === id) : null;
+        document.getElementById('card-id').value = id || '';
+        document.getElementById('modalTarjetaTitle').innerText = id ? 'Editar Tarjeta' : 'Nueva Tarjeta';
+        document.getElementById('btn-eliminar-tarjeta').style.display = id ? 'block' : 'none';
+        document.getElementById('btn-guardar-tarjeta').innerText = id ? 'Guardar Cambios' : 'Registrar';
+        if(it) {
+          document.getElementById('card-desc').value = it.descripcion;
+          document.getElementById('card-total').value = it.montoTotal;
+          document.getElementById('card-cuotas').value = it.cuotasTotales;
+        }
+        mTarjeta.show(); 
+        return; 
+      }
       const form = document.getElementById('formGeneric');
       form.reset();
       const it = id ? db.principal.find(x => x.id === id) : null;
@@ -426,14 +456,30 @@
 
     document.getElementById('formTarjeta').onsubmit = (e) => {
       e.preventDefault();
-      db.tarjetas.push({
-        id: crypto.randomUUID(),
-        mesInicio: mesAct, anioInicio: anioAct,
+      const id = document.getElementById('card-id').value;
+      const data = {
+        id: id || crypto.randomUUID(),
+        mesInicio: id ? db.tarjetas.find(x => x.id === id).mesInicio : mesAct,
+        anioInicio: id ? db.tarjetas.find(x => x.id === id).anioInicio : anioAct,
         descripcion: document.getElementById('card-desc').value,
         montoTotal: parseFloat(document.getElementById('card-total').value),
         cuotasTotales: parseInt(document.getElementById('card-cuotas').value)
-      });
+      };
+      if(id) {
+        const idx = db.tarjetas.findIndex(x => x.id === id);
+        db.tarjetas[idx] = data;
+      } else {
+        db.tarjetas.push(data);
+      }
       saveDB(); render(); mTarjeta.hide();
+    };
+
+    document.getElementById('btn-eliminar-tarjeta').onclick = () => {
+      if(confirm("¿Eliminar plan de cuotas?")) {
+        const id = document.getElementById('card-id').value;
+        db.tarjetas = db.tarjetas.filter(x => x.id !== id);
+        saveDB(); render(); mTarjeta.hide();
+      }
     };
 
     function f(v) { return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(v || 0); }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'finanzas-v3.3-cache'; // ACTUALIZACIÓN TEMAS Y CORAL
+const CACHE_NAME = 'finanzas-v3.8-cache'; // CAMBIO DE ICONO APP
 const urlsToCache = [
   'index.html',
   'manifest.json',
