@@ -186,6 +186,44 @@ La migración deberá:
 - Mantener una copia de respaldo.
 - Subir solo después de la confirmación del usuario.
 
+### 12.1 Formato actual y mapeo de campos
+
+La clave de `localStorage` es `finanzas_data_v3`. El objeto guardado hoy tiene
+tres partes: `principal` (ingresos y gastos), `tarjetas` (compras en cuotas) y
+`config` (categorías). Los campos actuales están en español; el modelo nuevo
+está en inglés. Mapeo:
+
+| Actual (`localStorage`) | Nuevo (Supabase) | Nota |
+|---|---|---|
+| `principal[].id` | `transactions.id` | Ya es UUID. |
+| `principal[].tipo` = `Ingreso` | `transactions.type` = `income` | |
+| `principal[].tipo` = `Gasto` | `transactions.type` | Hoy no distingue gasto fijo de gasto común. |
+| `principal[].descripcion` | `transactions.description` | |
+| `principal[].monto` | `transactions.amount` | Validar que sea > 0. |
+| `principal[].categoria` | `transactions.category` | |
+| `principal[].notas` | `transactions.notes` | Hay registros viejos con `notes` (ver abajo). |
+| `principal[].estado` = `Pagado`/`Pendiente` | `transactions.status` = `paid`/`pending` | |
+| `principal[].mes` | `transactions.month` | |
+| `principal[].anio` | `transactions.year` | |
+| `tarjetas[].id` | `installment_purchases.id` | |
+| `tarjetas[].descripcion` | `installment_purchases.description` | |
+| `tarjetas[].montoTotal` | `installment_purchases.total_amount` | |
+| `tarjetas[].cuotasTotales` | `installment_purchases.installment_count` | Validar que sea >= 1. |
+| `tarjetas[].mesInicio` | `installment_purchases.first_month` | |
+| `tarjetas[].anioInicio` | `installment_purchases.first_year` | |
+| `config.cat_ing` / `config.cat_gas` | Sin tabla definida aún | Decidir dónde van antes de migrar. |
+
+Pendientes que este mapeo deja a la vista:
+
+- **Campo de notas duplicado.** La app escribe `notas` pero al leer busca
+  `notes || notas`. Unificar en `notes` antes de migrar.
+- **Categorías custom sin destino.** `config.cat_ing` y `config.cat_gas`
+  viven dentro del objeto de datos y el modelo nuevo no define dónde se
+  guardan. Sin decisión, se pierden.
+- **"Gastos Fijos" sin tipo propio.** Hoy es solo `tipo: 'Gasto'`; el modelo
+  nuevo separa `fixed_expense_templates` (plantilla) de la transacción. Hay
+  que decidir cómo se mapea.
+
 ## 13. Recomendación sobre IndexedDB
 
 `localStorage` puede seguir utilizándose inicialmente.

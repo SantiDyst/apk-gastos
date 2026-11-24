@@ -167,3 +167,29 @@ Con eso el agente puede listar proyectos, leer el esquema y volcar la base.
 - **Doble respaldo por diseño:** copia local en el dispositivo del usuario
   (offline-first) + copia en Supabase. Si Supabase se cae, la app sigue
   andando; si el usuario pierde el dispositivo, los datos siguen en la nube.
+
+## 9. Pendientes de la segunda revisión (no contemplados en la primera)
+
+Revisando `index.html`, `sw.js` y `manifest.json` contra estas notas aparecieron
+cosas que la primera revisión no anotó. No son riesgos de datos, pero conviene
+resolverlas antes o durante la migración:
+
+1. **Nombre de la app inconsistente.** Hay cuatro nombres: repo "APK Gastos",
+   `<title>` "Control de Gastos Pro", manifest "Mi Control Financiero Pro" /
+   "Finanzas Pro" y encabezado de la app "FINANZAS". Elegir uno y aplicarlo en
+   todos lados (Fase 1).
+2. **Ícono desde CDN.** El manifest apunta el ícono a Flaticon (URL remota).
+   Offline o al instalar la PWA, el ícono puede faltar. Guardarlo local en el
+   repo y cachearlo en el Service Worker (Fase 1).
+3. **Color de tema desincronizado.** El manifest declara `theme_color`
+   `#0d6efd`, el HTML arranca con `#2c3e50`, y el cambio de tema pisa el color
+   por JavaScript. Dejarlos coherentes (Fase 1).
+4. **Falta la tabla de equivalencias de campos para la migración.** La app
+   guarda campos en español; el modelo nuevo usa inglés. El mapeo y las
+   decisiones quedaron en `notas/03-modelo-datos-y-sincronizacion.md` §12.1
+   (Fase 2).
+5. **Campo de notas duplicado.** La app escribe `notas` pero al leer busca
+   `notes || notas`. Unificar en `notes` antes de migrar (Fase 2).
+6. **Categorías custom sin destino.** `config.cat_ing` y `config.cat_gas`
+   viven dentro del objeto de datos; el modelo nuevo no define dónde van. Sin
+   decisión, se pierden (Fase 2).
