@@ -17,6 +17,8 @@ El objetivo inmediato no es convertirla en un producto comercial masivo, sino of
 
 La aplicación funciona como una PWA publicada mediante GitHub Pages.
 
+El hosting se migrará a Cloudflare Pages según la decisión registrada en `notas/04-plan-de-trabajo.md`.
+
 Tecnologías actuales:
 
 - HTML.
@@ -46,12 +48,16 @@ La evolución propuesta consiste en permitir que el usuario cree una cuenta, ini
 
 Se utilizará:
 
-- GitHub Pages para alojar la PWA.
+- Cloudflare Pages para alojar la PWA.
 - Supabase Auth para el registro e inicio de sesión.
 - Supabase Database para guardar los datos.
 - `localStorage` o IndexedDB como almacenamiento local y soporte offline.
 
 Por ahora no se desarrollará un backend propio.
+
+Cloudflare se eligió como hosting porque ya existe una cuenta con un proyecto pequeño funcionando en el plan gratuito.
+
+Para la base de datos se evaluó D1 (el SQLite alojado de Cloudflare) y se descartó para esta etapa: con pocos usuarios la capacidad no es el problema, y Supabase resuelve la autenticación y el aislamiento por usuario (RLS) sin escribir código de seguridad propio. D1 y un backend propio quedan como alternativa futura si cambian los requisitos.
 
 La aplicación JavaScript podrá comunicarse directamente con Supabase mediante su API y su cliente oficial.
 

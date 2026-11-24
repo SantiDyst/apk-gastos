@@ -4,7 +4,7 @@
 
 La arquitectura inicial estará compuesta por tres partes:
 
-1. PWA alojada en GitHub Pages.
+1. PWA alojada en Cloudflare Pages.
 2. Almacenamiento local para trabajo offline.
 3. Supabase para autenticación y persistencia remota.
 
@@ -12,7 +12,7 @@ La arquitectura inicial estará compuesta por tres partes:
 Usuario
    |
    v
-PWA en GitHub Pages
+PWA en Cloudflare Pages
    |
    +---- Almacenamiento local
    |
@@ -153,14 +153,26 @@ No debería utilizarse como única capa para almacenar los datos financieros.
 
 Los datos estarán en almacenamiento local estructurado y en Supabase.
 
-## 11. GitHub Pages
+## 11. Cloudflare Pages
 
-GitHub Pages seguirá alojando los archivos estáticos.
+Cloudflare Pages alojará los archivos estáticos.
+
+La cuenta de Cloudflare ya existe y tiene un proyecto pequeño funcionando en el plan gratuito.
+
+GitHub Pages queda como alternativa de respaldo si se desea mantener la publicación anterior.
 
 Las claves públicas necesarias para conectarse a Supabase pueden estar en el frontend.
 
 Nunca deberán exponerse:
 
-- Claves de servicio.
+- Claves de servicio (`service_role`).
 - Credenciales administrativas.
 - Secretos privados.
+
+## 12. Decisiones registradas y operación
+
+- Cloudflare Pages reemplaza a GitHub Pages como hosting principal.
+- Supabase se mantiene frente a D1 de Cloudflare: la autenticación y las políticas RLS ya resueltas pesan más que la capacidad, que es irrelevante a esta escala.
+- El plan gratuito de Supabase pausa el proyecto tras 7 días de baja actividad. Mitigación: tarea programada (cron) que consulta la API cada 2 o 3 días.
+- El plan gratuito de Supabase no incluye backups diarios. Mitigación: respaldo semanal con `supabase db dump` o `pg_dump`, guardado fuera de la nube.
+- Los datos de los usuarios viven en el proyecto de Supabase del propietario de la app: el backup es responsabilidad del propietario, no del usuario.

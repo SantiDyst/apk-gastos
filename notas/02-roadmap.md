@@ -8,7 +8,7 @@ Tareas:
 
 - Crear una versión estable identificada.
 - Guardar una copia del proyecto actual.
-- Verificar exportación de datos.
+- Implementar la exportación de datos (hoy no existe) y verificar que el estado se recupera desde el archivo exportado.
 - Documentar la estructura actual de los registros.
 - Probar instalación y funcionamiento offline.
 
@@ -16,9 +16,9 @@ Resultado esperado:
 
 La versión actual queda protegida antes de comenzar cambios importantes.
 
-## Fase 1 — Refactor mínimo
+## Fase 1 — Refactor mínimo, correcciones y publicación en Cloudflare Pages
 
-Objetivo: preparar el código para cambiar el almacenamiento sin rehacer la interfaz.
+Objetivo: preparar el código para cambiar el almacenamiento sin rehacer la interfaz, corregir los riesgos conocidos y mudar la publicación a Cloudflare Pages.
 
 Tareas:
 
@@ -26,7 +26,10 @@ Tareas:
 - Separar JavaScript del HTML.
 - Crear una capa de almacenamiento.
 - Evitar llamadas dispersas a `localStorage`.
+- Corregir los riesgos de la revisión inicial: escapado de HTML (XSS), validación de `JSON.parse`, valores inválidos de cuotas, cachés que borra el Service Worker y el `manifest.json` que menciona Google Sheets.
 - Mantener exactamente el comportamiento actual.
+- Crear el proyecto en Cloudflare Pages y publicar la versión refactorizada.
+- Verificar la instalación como PWA desde el dominio de Cloudflare Pages.
 
 Resultado esperado:
 
