@@ -2,9 +2,11 @@
 
 Documento de arranque para retomar el proyecto. Las decisiones de fondo están en
 `00-documento-maestro.md` y `01-arquitectura.md`; el modelo de datos en
-`03-modelo-datos-y-sincronizacion.md`; las fases en `02-roadmap.md`. Este
-documento define el orden de ejecución, el flujo de trabajo con agentes y el
-setup de herramientas, para que cualquier sesión nueva pueda arrancar de acá.
+`03-modelo-datos-y-sincronizacion.md`; las fases en `02-roadmap.md`; las mejoras
+de uso personal (backup, presupuesto, categorías, deuda de tarjetas,
+plantillas, búsqueda) en `05-mejoras-uso-personal.md`. Este documento define el
+orden de ejecución, el flujo de trabajo con agentes y el setup de herramientas,
+para que cualquier sesión nueva pueda arrancar de acá.
 
 ## 1. Estado de partida
 

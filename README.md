@@ -12,6 +12,9 @@ reducido de usuarios.
 3. `notas/01-arquitectura.md` — arquitectura y decisiones registradas.
 4. `notas/02-roadmap.md` — fases de evolución.
 5. `notas/03-modelo-datos-y-sincronizacion.md` — modelo de datos, RLS y sync.
+6. `notas/05-mejoras-uso-personal.md` — mejoras locales (backup, presupuesto,
+   categorías, deuda de tarjetas, plantillas, búsqueda) con reglas de negocio,
+   casos de uso y tareas.
 
 ## Estado actual
 
