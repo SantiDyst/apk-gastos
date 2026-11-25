@@ -1,0 +1,10 @@
+{
+  "name": "apk-gastos",
+  "version": "4.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Offline-first personal finance PWA with JSON backup and manual Google Drive sync.",
+  "scripts": {
+    "test": "node --test \"tests/*.test.js\""
+  }
+}
