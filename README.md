@@ -81,6 +81,10 @@ local funciona igual.
    - `http://localhost:8080` (o el puerto local elegido).
 6. Copiar el Client ID en `GOOGLE_CLIENT_ID` dentro de `js/config.js`.
 
+La guía completa para probar OAuth real en Chrome, entre dos perfiles, en celular
+y como PWA instalada está en `notas/08-prueba-oauth-drive-real.md`. Mientras
+queden advertencias de revisión pendientes, usar solamente datos descartables.
+
 La app pide acceso únicamente con `https://www.googleapis.com/auth/drive.file`.
 La primera autorización ocurre al pulsar **Conectar Google Drive** o
 **Sincronizar**; nunca al abrir la app.
