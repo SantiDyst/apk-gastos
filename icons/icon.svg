@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="APK Gastos">
+  <rect width="512" height="512" fill="#2c3e50"/>
+  <g>
+    <rect x="112" y="300" width="64" height="112" rx="18" fill="#3498db"/>
+    <rect x="224" y="240" width="64" height="172" rx="18" fill="#2ecc71"/>
+    <rect x="336" y="164" width="64" height="248" rx="18" fill="#ff8a7a"/>
+  </g>
+  <rect x="96" y="412" width="320" height="14" rx="7" fill="#ffffff" opacity="0.85"/>
+</svg>
