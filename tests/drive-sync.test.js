@@ -78,9 +78,27 @@ function zeroCalls() {
     updateFile: 0,
     createFile: 0,
     createFolder: 0,
+    findAppFolders: 0,
     revokeAccess: 0,
     clearAccess: 0
   };
+}
+
+function driveFile(overrides = {}) {
+  return {
+    id: 'file-ok',
+    name: 'apk-gastos-data.json',
+    mimeType: 'application/json',
+    parents: ['folder1'],
+    version: '4',
+    md5Checksum: 'm4',
+    trashed: false,
+    ...overrides
+  };
+}
+
+function jsonResponse(data) {
+  return { ok: true, status: 200, json: async () => data };
 }
 
 function fakeApi(context = {}) {
@@ -125,6 +143,10 @@ function fakeApi(context = {}) {
     createFolder: async () => {
       calls.createFolder += 1;
       return { id: 'newfolder', mimeType: FOLDER_MIME };
+    },
+    findAppFolders: async () => {
+      calls.findAppFolders += 1;
+      return context.folders || [];
     },
     revokeAccess: async () => {
       calls.revokeAccess += 1;
@@ -287,6 +309,65 @@ test('first connection without remote file offers to create it', async () => {
   assert.equal(storage.getSyncState().fileId, 'newfile');
   assert.equal(storage.getSyncState().folderId, 'newfolder');
   assert.equal(storage.isLocalDirty(), false);
+});
+
+test('initial creation re-checks Drive after confirmation and never duplicates', async () => {
+  setup({ dirty: true, known: null, folderId: null, fileId: null });
+  const appeared = {
+    id: 'racefile',
+    name: 'apk-gastos-data.json',
+    mimeType: 'application/json',
+    parents: ['racefolder'],
+    version: '1',
+    md5Checksum: 'm1'
+  };
+  let folderReads = 0;
+  let fileReads = 0;
+  const { api, calls } = fakeApi({ folder: null, file: null });
+  api.resolveFolder = async () => {
+    folderReads += 1;
+    return folderReads === 1 ? null : { id: 'racefolder', mimeType: FOLDER_MIME };
+  };
+  api.resolveFile = async () => {
+    fileReads += 1;
+    return fileReads === 1 ? null : appeared;
+  };
+  const service = createSyncService({
+    api,
+    dialogs: { confirmCreateRemote: async () => true },
+    now: () => '2026-11-25T10:00:00.000Z'
+  });
+  const result = await service.synchronize();
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, 'remote_appeared');
+  assert.equal(calls.createFile, 0);
+  assert.equal(calls.createFolder, 0);
+  assert.equal(storage.isLocalDirty(), true);
+  assert.equal(storage.getSyncState().fileId, null);
+  assert.equal(storage.getSyncState().folderId, null);
+});
+
+test('initial folder creation refuses to continue when a duplicate appears', async () => {
+  setup({ dirty: true, known: null, folderId: null, fileId: null });
+  const { api, calls } = fakeApi({ folder: null, file: null });
+  api.findAppFolders = async () => {
+    calls.findAppFolders += 1;
+    return [
+      { id: 'newfolder', mimeType: FOLDER_MIME },
+      { id: 'otherfolder', mimeType: FOLDER_MIME }
+    ];
+  };
+  const service = createSyncService({
+    api,
+    dialogs: { confirmCreateRemote: async () => true },
+    now: () => '2026-11-25T10:00:00.000Z'
+  });
+  const result = await service.synchronize();
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, 'ambiguous_location');
+  assert.equal(calls.createFile, 0);
+  assert.equal(calls.createFolder, 1);
+  assert.equal(storage.isLocalDirty(), true);
 });
 
 test('first connection without remote file can be cancelled', async () => {
@@ -591,7 +672,17 @@ test('Drive API recovers a lost file id by searching before creating anything', 
           ok: true,
           status: 200,
           json: async () => ({
-            files: [{ id: 'found-file', version: '3', md5Checksum: 'm3', trashed: false }]
+            files: [
+              {
+                id: 'found-file',
+                name: 'apk-gastos-data.json',
+                mimeType: 'application/json',
+                parents: ['folder1'],
+                version: '3',
+                md5Checksum: 'm3',
+                trashed: false
+              }
+            ]
           })
         };
       }
@@ -635,8 +726,22 @@ test('Drive API refuses to pick one of several duplicate folders or files', asyn
       status: 200,
       json: async () => ({
         files: [
-          { id: 'file1', md5Checksum: 'a', version: '1' },
-          { id: 'file2', md5Checksum: 'b', version: '1' }
+          {
+            id: 'file1',
+            name: 'apk-gastos-data.json',
+            mimeType: 'application/json',
+            parents: ['folder1'],
+            md5Checksum: 'a',
+            version: '1'
+          },
+          {
+            id: 'file2',
+            name: 'apk-gastos-data.json',
+            mimeType: 'application/json',
+            parents: ['folder1'],
+            md5Checksum: 'b',
+            version: '1'
+          }
         ]
       })
     })
@@ -645,6 +750,76 @@ test('Drive API refuses to pick one of several duplicate folders or files', asyn
     () => fileApi.resolveFile('folder1', {}),
     (error) => error.code === 'ambiguous_location'
   );
+});
+
+test('Drive API discards a stored file id that no longer identifies the data file', async () => {
+  const mismatches = [
+    { name: 'otro-archivo.json' },
+    { mimeType: 'text/plain' },
+    { parents: ['another-folder'] }
+  ];
+  for (const mismatch of mismatches) {
+    const urls = [];
+    const api = createDriveApi({
+      getToken: () => 'token',
+      fetchImpl: async (url) => {
+        urls.push(url);
+        if (url.includes('/files/known-file')) {
+          return jsonResponse(driveFile({ id: 'known-file', ...mismatch }));
+        }
+        if (url.includes('spaces=drive')) {
+          return jsonResponse({ files: [driveFile({ id: 'correct-file' })] });
+        }
+        throw new Error(`Unexpected URL ${url}`);
+      }
+    });
+    const resolved = await api.resolveFile('folder1', { knownFileId: 'known-file' });
+    assert.equal(resolved.id, 'correct-file', `mismatch ${JSON.stringify(mismatch)} must fall back to search`);
+    assert.ok(urls.some((url) => url.includes('spaces=drive')));
+  }
+});
+
+test('Drive API accepts a stored file id only when name, MIME and folder match', async () => {
+  const urls = [];
+  const api = createDriveApi({
+    getToken: () => 'token',
+    fetchImpl: async (url) => {
+      urls.push(url);
+      if (url.includes('/files/known-file')) return jsonResponse(driveFile({ id: 'known-file' }));
+      throw new Error(`Unexpected URL ${url}`);
+    }
+  });
+  const resolved = await api.resolveFile('folder1', { knownFileId: 'known-file' });
+  assert.equal(resolved.id, 'known-file');
+  assert.equal(urls.length, 1);
+  assert.equal(urls.some((url) => url.includes('spaces=drive')), false);
+});
+
+test('Drive API does not create over a same-name file that is not JSON', async () => {
+  const api = createDriveApi({
+    getToken: () => 'token',
+    fetchImpl: async () =>
+      jsonResponse({ files: [driveFile({ id: 'wrong', mimeType: 'text/plain' })] })
+  });
+  await assert.rejects(
+    () => api.resolveFile('folder1', {}),
+    (error) => error.code === 'ambiguous_location' && /no es un respaldo JSON/.test(error.message)
+  );
+});
+
+test('Drive API returns no file when the stored id is invalid and nothing matches', async () => {
+  const api = createDriveApi({
+    getToken: () => 'token',
+    fetchImpl: async (url) => {
+      if (url.includes('/files/known-file')) {
+        return jsonResponse(driveFile({ id: 'known-file', name: 'otro.json' }));
+      }
+      if (url.includes('spaces=drive')) return jsonResponse({ files: [] });
+      throw new Error(`Unexpected URL ${url}`);
+    }
+  });
+  const resolved = await api.resolveFile('folder1', { knownFileId: 'known-file' });
+  assert.equal(resolved, null);
 });
 
 test('Drive API treats trashed metadata as a missing file', async () => {

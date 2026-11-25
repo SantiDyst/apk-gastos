@@ -102,7 +102,7 @@ npm test
 
 Evidence collected on 2026-11-25:
 
-- `npm test`: 53 tests passed, 0 failed. Suites: `tests/storage.test.js`,
+- `npm test`: 59 tests passed, 0 failed. Suites: `tests/storage.test.js`,
   `tests/backup.test.js`, `tests/drive-sync.test.js`.
 - Chrome headless against a local static server (no real Google credentials):
   - Old `finanzas_data_v3` migrates to `schema_version: 1`, `notas` becomes
@@ -130,3 +130,10 @@ Evidence collected on 2026-11-25:
 - 2026-11-25: Cross-checked the app in Chrome headless (migration, form
   mutation, XSS-safe rendering, export/import recovery, corrupt-data recovery,
   offline reload). No deploy, push or PR performed.
+- 2026-11-25: Fix review blockers. A stored `fileId` is now accepted only when
+  its name, MIME type and parent folder still identify the expected data file;
+  otherwise the app searches by name, ignores wrong-MIME candidates and never
+  overwrites an unrelated file. Initial remote creation re-resolves folder and
+  file after the user confirmation, aborts with `remote_appeared` if another
+  device created the file, and aborts if duplicate folders appeared. Added six
+  regression tests (now 59 total).

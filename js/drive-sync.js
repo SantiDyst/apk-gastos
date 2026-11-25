@@ -85,6 +85,18 @@ function escapeQueryName(name) {
   return String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
+function isExpectedDataFile(metadata, folderId, fileName) {
+  if (!metadata || metadata.trashed) return false;
+  if (metadata.name !== fileName) return false;
+  if (metadata.mimeType !== undefined && metadata.mimeType !== null && metadata.mimeType !== 'application/json') {
+    return false;
+  }
+  if (folderId) {
+    if (!Array.isArray(metadata.parents) || !metadata.parents.includes(folderId)) return false;
+  }
+  return true;
+}
+
 export function createDriveApi(options = {}) {
   const fetchImpl = options.fetchImpl || ((...args) => globalThis.fetch(...args));
   const getToken = options.getToken;
@@ -243,7 +255,9 @@ export function createDriveApi(options = {}) {
     if (knownFileId) {
       try {
         const metadata = await getFileMetadata(knownFileId);
-        return metadata;
+        if (isExpectedDataFile(metadata, folderId, fileName)) return metadata;
+        // The stored id still exists but no longer points to our data file:
+        // ignore it and search by name/folder before creating anything.
       } catch (error) {
         if (isMissingRemoteFile(error)) {
           // Fall through to a name search.
@@ -253,14 +267,23 @@ export function createDriveApi(options = {}) {
       }
     }
     const files = await findDataFiles(folderId);
-    if (files.length === 0) return null;
-    if (files.length > 1) {
+    const expected = files.filter((file) => isExpectedDataFile(file, folderId, fileName));
+    if (expected.length === 0) {
+      if (files.length > 0) {
+        throw new SyncError(
+          'ambiguous_location',
+          'Hay un archivo con el nombre esperado en Drive que no es un respaldo JSON válido. Depurá la ubicación antes de sincronizar.'
+        );
+      }
+      return null;
+    }
+    if (expected.length > 1) {
       throw new SyncError(
         'ambiguous_location',
         'Hay varios archivos "apk-gastos-data.json" en Drive. Depurá la ubicación antes de sincronizar.'
       );
     }
-    return files[0];
+    return expected[0];
   }
 
   return {
@@ -623,7 +646,28 @@ export function createSyncService(options = {}) {
       setStatus('connected', 'Creación del archivo remoto cancelada.');
       return { ok: true, action: 'cancelled' };
     }
-    const targetFolder = folder || (await api.createFolder());
+
+    // Re-locate after the confirmation dialog: another device may have created
+    // the folder or file while the user was deciding.
+    let targetFolder = await api.resolveFolder({ knownFolderId: folder ? folder.id : null });
+    const appeared = await api.resolveFile(targetFolder ? targetFolder.id : null, { knownFileId: null });
+    if (appeared) {
+      throw new SyncError(
+        'remote_appeared',
+        'El archivo de Drive apareció durante la confirmación. Volvé a sincronizar para revisar los cambios; no se creó un duplicado.'
+      );
+    }
+    if (!targetFolder) {
+      const createdFolder = await api.createFolder();
+      const folders = await api.findAppFolders();
+      if (folders.length > 1) {
+        throw new SyncError(
+          'ambiguous_location',
+          'Se creó más de una carpeta "APK Gastos" durante la operación. Depurá la ubicación antes de sincronizar.'
+        );
+      }
+      targetFolder = folders[0] || createdFolder;
+    }
     const created = await api.createFile(targetFolder.id, localText);
     completeSync(created, targetFolder.id, datasetId);
     setStatus('updated', 'Copia inicial creada en Google Drive.');
