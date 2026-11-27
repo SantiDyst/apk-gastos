@@ -34,7 +34,7 @@ js/storage.js       almacenamiento local, contrato JSON, validación y sync stat
 js/backup.js        exportación, importación y backups automáticos
 js/drive-sync.js    GIS, Drive REST y algoritmo de sincronización
 js/ui.js            diálogos, panel de sync y mensajes
-js/config.js        Client ID público de Google (vacío por defecto)
+js/config.js        Client ID público de Google (ya configurado para localhost)
 sw.js               service worker versionado, sin cachear Google
 manifest.json       metadatos PWA e iconos locales
 tests/              pruebas con node:test
@@ -131,6 +131,14 @@ El archivo `_headers` define cabeceras de seguridad y desactiva el cacheo del
 service worker, del HTML y de los módulos, para que un deploy nuevo no quede
 servido desde caché vieja.
 
+El armado además hace dos controles:
+
+- Verifica que cada recurso local precacheado por `APP_SHELL` en `sw.js` exista
+  en `dist/`; si falta uno, el build falla en vez de publicar una PWA rota.
+- Escribe en el `sw.js` publicado un `CACHE_NAME` con hash del contenido
+  (`apk-gastos-v4.0.0-<hash>`). Así cada deploy con cambios invalida solo el
+  caché anterior, sin editar el número a mano.
+
 ### Opción A — integración con Git (recomendada)
 
 1. Subir la rama a GitHub (`git push origin feat/google-drive-sync`).
@@ -161,8 +169,9 @@ el proyecto si todavía no existe.
    `403 access_denied`.
 2. Probar la conexión desde el dominio HTTPS: es el único origen donde se puede
    instalar la PWA y probar Chrome móvil.
-3. Verificar que `sw.js` se actualice después de cada deploy (el número de
-   `CACHE_NAME` tiene que cambiar para invalidar el caché anterior).
+3. Confirmar que el sitio sirva el `sw.js` del último armado
+   (`apk-gastos-v4.0.0-<hash>` en `dist/sw.js`): si el hash no cambió, no había
+   cambios en los assets y la caché vieja sigue siendo válida.
 
 El deploy no está ejecutado todavía: esta entrega deja el armado y la
 configuración listos para publicar.
