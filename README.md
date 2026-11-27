@@ -202,9 +202,10 @@ siguiente push.
   tokens vencidos, JSON remoto inválido, cambios concurrentes, reintentos,
   sincronización paralela y mocks de Drive.
 
-Todas las pruebas de Drive usan mocks. Con el Client ID configurado, la conexión y
-la primera subida quedaron verificadas a mano en Chrome de escritorio; el ciclo
-entre dos dispositivos, con datos descartables, sigue pendiente.
+Todas las pruebas de Drive usan mocks. Con el Client ID configurado, la conexión,
+la primera subida y el ciclo entre dos dispositivos (escritorio y Chrome móvil)
+quedaron verificados a mano con datos descartables. Siguen sin probar en real los
+conflictos, la revocación de permiso y la PWA instalada.
 
 ## Estado
 

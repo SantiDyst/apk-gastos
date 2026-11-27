@@ -197,10 +197,11 @@ Las pruebas automatizadas y los mocks no sustituyen este recorrido. La integraci
 
 ### 8.1 Resultado registrado (2026-11-27)
 
-Alcance cubierto: **Chrome de escritorio en `localhost`, una sola cuenta**.
+Alcance cubierto: **dos dispositivos, una sola cuenta**, con datos descartables.
 
-- Commit probado: `c34c295` sobre la rama `feat/google-drive-sync`.
-- Origen: `http://localhost:8080` servido con `python -m http.server 8080`.
+- Commit probado: `c34c295` en `localhost` y la rama `feat/google-drive-sync`
+  desplegada en Cloudflare Pages.
+- Orígenes: `http://localhost:8080` y el dominio de Pages (HTTPS).
 - Proyecto de Google Cloud: `app-gastos-515923`, credencial de tipo **Aplicación web**.
 - Cuenta: la cuenta personal del autor, agregada previamente en **Usuarios de prueba**.
 
@@ -209,20 +210,22 @@ Casos observados:
 - ✅ Conectar desde un clic directo abre el consentimiento y devuelve un token válido.
 - ✅ Se crea una única carpeta `APK Gastos/` con el archivo `apk-gastos-data.json` en el Drive de la cuenta.
 - ✅ La app no abre OAuth al cargar: el flujo arranca solo al pulsar el botón.
+- ✅ Ciclo entre dos dispositivos: la copia creada desde Chrome de escritorio se
+  sincronizó desde Chrome móvil en el dominio de Pages, sin errores ni
+  duplicados.
 
 Casos todavía sin ejecutar en un entorno real (siguen pendientes y cubiertos solo
 por pruebas con mocks):
 
-- A sube y B descarga; B sube y A descarga.
 - Resolución de conflicto, backup previo a una descarga y cancelación sin cambios.
 - Revocación de permiso y desconexión.
-- Chrome móvil y PWA instalada desde el origen HTTPS de Cloudflare Pages.
+- PWA instalada desde el origen HTTPS.
 
 Observación útil: la primera autorización falló con `403 access_denied` porque la
 cuenta no figuraba en **Usuarios de prueba**. Ese error lo emite Google antes de
 que la app intervenga, así que no es un fallo del código. Agregar el correo en la
 consola y reintentar lo resuelve.
 
-Mientras las tres últimas líneas de pendientes no se ejecuten, la sincronización
-entre dispositivos queda implementada y probada con mocks, pero no verificada de
-punta a punta en un entorno real.
+Mientras los tres pendientes no se ejecuten, la sincronización entre dispositivos
+está verificada de punta a punta en el camino feliz, pero los conflictos, la
+revocación y la PWA instalada siguen respaldados solo por pruebas con mocks.
