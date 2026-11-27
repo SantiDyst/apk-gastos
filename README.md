@@ -122,14 +122,50 @@ locales ni el archivo de Drive.
 
 ## Publicación en Cloudflare Pages
 
-El proyecto es estático y no requiere build. En Cloudflare Pages:
+El proyecto es estático: no hay compilación de assets, pero sí un paso de armado.
+`npm run build` copia el shell de la app a `dist/` — solo `index.html`,
+`manifest.json`, `sw.js`, `_headers`, `css/`, `js/` e `icons/`. Las notas, las
+pruebas y los documentos internos de `odd/` no se publican.
 
-- Build command: vacío.
-- Build output directory: la raíz del repositorio.
-- Los orígenes del dominio de Pages deben estar registrados en Google Cloud para
-  que OAuth funcione.
+El archivo `_headers` define cabeceras de seguridad y desactiva el cacheo del
+service worker, del HTML y de los módulos, para que un deploy nuevo no quede
+servido desde caché vieja.
 
-No se ejecutó ningún deploy desde esta entrega.
+### Opción A — integración con Git (recomendada)
+
+1. Subir la rama a GitHub (`git push origin feat/google-drive-sync`).
+2. En el panel de Cloudflare: **Workers & Pages → Create → Pages → Connect to
+   Git**, repositorio `SantiDyst/apk-gastos`.
+3. Rama de producción: `master`.
+4. Build command: `npm run build`. Build output directory: `dist`.
+5. Cada push a la rama de producción publica; las demás ramas generan previews
+   con su propia URL.
+
+### Opción B — subida directa con Wrangler
+
+```bash
+npm run build
+npx wrangler login
+npm run deploy
+```
+
+`npm run deploy` publica `dist/` en el proyecto `apk-gastos` usando
+`wrangler pages deploy`. La primera ejecución descarga wrangler vía `npx` y crea
+el proyecto si todavía no existe.
+
+### Después del primer deploy
+
+1. Registrar en Google Cloud los orígenes del dominio publicado
+   (`https://<proyecto>.pages.dev` y el dominio propio si se agrega), además de
+   `http://localhost:8080`, sin barra final. Sin este paso OAuth falla con
+   `403 access_denied`.
+2. Probar la conexión desde el dominio HTTPS: es el único origen donde se puede
+   instalar la PWA y probar Chrome móvil.
+3. Verificar que `sw.js` se actualice después de cada deploy (el número de
+   `CACHE_NAME` tiene que cambiar para invalidar el caché anterior).
+
+El deploy no está ejecutado todavía: esta entrega deja el armado y la
+configuración listos para publicar.
 
 ## Pruebas
 
@@ -137,6 +173,8 @@ No se ejecutó ningún deploy desde esta entrega.
 
 - `tests/storage.test.js` — contrato JSON, migraciones, validaciones, revisión,
   `local_dirty` y pestañas desactualizadas.
+- `tests/build.test.js` — el armado publica solo el shell de la app y no deja
+  escribir en la raíz del repositorio.
 - `tests/backup.test.js` — exportación, importación, archivos inválidos y backup
   automático antes de reemplazar.
 - `tests/drive-sync.test.js` — tabla de decisión, conflictos, primera conexión,

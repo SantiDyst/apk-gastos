@@ -82,7 +82,8 @@ Requisito: Node.js instalado (ya está: v24). Cloudflare se administra con `npx`
 
 ### 6.1 Cloudflare
 
-`wrangler` es la CLI oficial de Cloudflare. Ya fue verificada en esta máquina (v4.167.0 vía `npx`).
+`wrangler` es la CLI oficial de Cloudflare y se ejecuta vía `npx` (la primera vez
+descarga la versión vigente).
 
 ```bash
 npx wrangler login
@@ -91,6 +92,14 @@ npx wrangler pages project list
 ```
 
 El token queda guardado localmente en la PC; ninguna contraseña pasa por el chat. Como alternativa restringida, usar un token de Cloudflare con solo los permisos necesarios y exportarlo como `CLOUDFLARE_API_TOKEN` antes de ejecutar wrangler.
+
+Publicación: el armado se hace con `npm run build`, que deja el sitio en `dist/`
+solo con los archivos de la app. Después, dos caminos:
+
+- Integración con Git en el panel de Cloudflare (build `npm run build`, salida
+  `dist`), recomendada porque agrega previews por rama.
+- Subida directa: `npm run deploy` (arma y publica `dist/` con
+  `wrangler pages deploy`).
 
 ### 6.2 Google Cloud y Drive
 
@@ -107,9 +116,11 @@ No se necesita un Client Secret para el modelo de tokens de GIS en el navegador.
 ### 6.3 Checklist de preparación
 
 - [ ] `npx wrangler whoami` muestra la cuenta de Cloudflare.
-- [ ] Existe un proyecto de Google Cloud con Drive API habilitada.
-- [ ] La pantalla OAuth y los usuarios de prueba están configurados.
-- [ ] Existe un Client ID web con todos los orígenes necesarios.
+- [x] Existe un proyecto de Google Cloud con Drive API habilitada.
+- [x] La pantalla OAuth y los usuarios de prueba están configurados.
+- [ ] Existe un Client ID web con todos los orígenes necesarios: hoy solo está
+      `http://localhost:8080`; falta el dominio de Cloudflare Pages.
+- [x] `npm run build` deja el sitio publicable en `dist/`.
 - [ ] `notas/04-plan-de-trabajo.md` fue leído antes de empezar.
 
 La configuración de Google puede prepararse antes de Fase 3, pero no reemplaza las fases de respaldo y validación.

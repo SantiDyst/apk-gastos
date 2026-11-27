@@ -1,3 +1,7 @@
 # Local scratch caches
 .tmp-home/
 node_modules/
+
+# Build output and Cloudflare CLI state
+dist/
+.wrangler/

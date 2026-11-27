@@ -5,6 +5,8 @@
   "type": "module",
   "description": "Offline-first personal finance PWA with JSON backup and manual Google Drive sync.",
   "scripts": {
-    "test": "node --test \"tests/*.test.js\""
+    "test": "node --test \"tests/*.test.js\"",
+    "build": "node scripts/build.mjs",
+    "deploy": "node scripts/build.mjs && npx wrangler pages deploy dist --project-name apk-gastos"
   }
 }
