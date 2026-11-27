@@ -67,8 +67,10 @@ Abrir `http://localhost:8080`.
 
 Estado actual: `js/config.js` ya contiene el Client ID del proyecto
 `app-gastos-515923` (credencial de tipo **Aplicación web**), con el origen
-`http://localhost:8080` autorizado. Falta registrar el dominio de producción o de
-Cloudflare Pages cuando exista. La verificación OAuth real sigue pendiente.
+`http://localhost:8080` autorizado y la cuenta de prueba habilitada en la consola.
+La conexión y la primera subida están verificadas en una cuenta real; el ciclo
+entre dos dispositivos sigue pendiente. Falta registrar el dominio de producción o
+de Cloudflare Pages cuando exista.
 
 Si `GOOGLE_CLIENT_ID` queda vacío, Google Drive se deshabilita con un aviso y el
 respaldo JSON local funciona igual.
@@ -141,9 +143,9 @@ No se ejecutó ningún deploy desde esta entrega.
   tokens vencidos, JSON remoto inválido, cambios concurrentes, reintentos,
   sincronización paralela y mocks de Drive.
 
-Todas las pruebas de Drive usan mocks. El Client ID ya está configurado; la
-verificación OAuth real entre dos dispositivos, con datos descartables, sigue
-pendiente.
+Todas las pruebas de Drive usan mocks. Con el Client ID configurado, la conexión y
+la primera subida quedaron verificadas a mano en Chrome de escritorio; el ciclo
+entre dos dispositivos, con datos descartables, sigue pendiente.
 
 ## Estado
 
