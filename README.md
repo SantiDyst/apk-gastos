@@ -65,8 +65,13 @@ Abrir `http://localhost:8080`.
 
 ## Google Drive (opcional)
 
-Google Drive está deshabilitado hasta configurar un Client ID. El respaldo JSON
-local funciona igual.
+Estado actual: `js/config.js` ya contiene el Client ID del proyecto
+`app-gastos-515923` (credencial de tipo **Aplicación web**), con el origen
+`http://localhost:8080` autorizado. Falta registrar el dominio de producción o de
+Cloudflare Pages cuando exista. La verificación OAuth real sigue pendiente.
+
+Si `GOOGLE_CLIENT_ID` queda vacío, Google Drive se deshabilita con un aviso y el
+respaldo JSON local funciona igual.
 
 1. Crear o elegir un proyecto en Google Cloud Console.
 2. Habilitar **Google Drive API**.
@@ -136,8 +141,9 @@ No se ejecutó ningún deploy desde esta entrega.
   tokens vencidos, JSON remoto inválido, cambios concurrentes, reintentos,
   sincronización paralela y mocks de Drive.
 
-Todas las pruebas de Drive usan mocks. La verificación OAuth real queda pendiente
-hasta contar con un Client ID y una cuenta de prueba autorizada.
+Todas las pruebas de Drive usan mocks. El Client ID ya está configurado; la
+verificación OAuth real entre dos dispositivos, con datos descartables, sigue
+pendiente.
 
 ## Estado
 
