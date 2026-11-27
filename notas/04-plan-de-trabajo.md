@@ -1,197 +1,148 @@
-# Plan de Trabajo — Modularización, Cloudflare Pages y Supabase
+# Plan de Trabajo — Modularización, Cloudflare Pages y Google Drive
 
-Documento de arranque para retomar el proyecto. Las decisiones de fondo están en
-`00-documento-maestro.md` y `01-arquitectura.md`; el modelo de datos en
-`03-modelo-datos-y-sincronizacion.md`; las fases en `02-roadmap.md`; las mejoras
-de uso personal (backup, presupuesto, categorías, deuda de tarjetas,
-plantillas, búsqueda) en `05-mejoras-uso-personal.md`. Este documento define el
-orden de ejecución, el flujo de trabajo con agentes y el setup de herramientas,
-para que cualquier sesión nueva pueda arrancar de acá.
+Documento de arranque para retomar el proyecto. Las decisiones de fondo están en `00-documento-maestro.md` y `01-arquitectura.md`; el contrato JSON y la sincronización en `03-modelo-datos-y-sincronizacion.md`; las fases en `02-roadmap.md`; las mejoras de uso personal en `05-mejoras-uso-personal.md`.
+
+Este documento define el orden de ejecución, el flujo de trabajo con agentes y el setup necesario para que cualquier sesión nueva pueda arrancar sin reconstruir las decisiones.
 
 ## 1. Estado de partida
 
-- La app es una PWA monolítica: `index.html` con HTML, CSS y JavaScript inline,
-  más `sw.js` y `manifest.json`.
-- Los datos viven únicamente en `localStorage`; no existe exportación.
+- La app es una PWA monolítica: `index.html` con HTML, CSS y JavaScript inline, más `sw.js` y `manifest.json`.
+- Los datos viven únicamente en `localStorage`; no existe exportación ni importación.
 - La publicación actual está en GitHub Pages; se migra a Cloudflare Pages.
-- Stack decidido: **Cloudflare Pages (hosting) + Supabase (base de datos y
-  autenticación)**, ambos en plan gratuito. D1 de Cloudflare descartado para
-  esta etapa.
+- Stack decidido: **Cloudflare Pages (hosting) + Google Drive (copia remota personal) + Google Identity Services (autorización)**.
+- La sincronización inicial será manual, con una foto completa del JSON y sin backend propio.
+- Supabase queda descartado para esta etapa: no se crearán tablas, cuentas propias ni políticas RLS.
 
-## 2. Por qué este stack (decisión registrada)
+## 2. Por qué este stack
 
-| Factor | Cloudflare D1 | Supabase Free |
-|---|---|---|
-| Capacidad para ~10 usuarios | Sobra | Sobra (500 MB) |
-| Autenticación | Escribirla a mano en un Worker | Incluida |
-| Aislamiento por usuario | Escribirlo a mano | RLS con `user_id` (ya diseñado en `notas/03`) |
-| Apagado por inactividad | No | Pausa tras 7 días de baja actividad (mitigada, ver §8) |
+| Factor | Decisión con Google Drive |
+| --- | --- |
+| Datos | Cada usuario conserva un JSON en su propio Drive. |
+| Autorización | GIS y OAuth con el alcance mínimo `drive.file`. |
+| Aislamiento | No existe una base compartida entre usuarios que administrar. |
+| Operación | No hay base que pausar, cron anti-inactividad ni `pg_dump`. |
+| Offline | `localStorage` sigue siendo la fuente de trabajo; Drive es opcional. |
+| Multi-dispositivo | Sincronización explícita del mismo JSON entre PC y celular. |
+| Conflictos | Se detectan cambios en ambos lados y el usuario elige; no hay fusión automática. |
 
-La parte difícil del proyecto no es guardar datos: es la autenticación y que
-cada usuario solo acceda a sus filas. Supabase lo resuelve sin código propio
-de seguridad; D1 exigiría escribirlo a mano, con riesgo.
+La parte delicada ya no es administrar tablas o sesiones: es evitar sobrescrituras, validar cualquier JSON recuperado y hacer comprensible la resolución de conflictos.
 
 ## 3. Orden de trabajo
 
 Cada paso corresponde a las fases de `02-roadmap.md`.
 
-1. **Respaldo y exportación (Fase 0).** Exportación básica de datos a JSON
-   antes de tocar cualquier otra cosa. Ningún cambio posterior debe poder
-   destruir los datos existentes.
-2. **Modularización (Fase 1).** Partir `index.html` en módulos según la
-   estructura de `01-arquitectura.md` §2 (`css/`, `js/app.js`, `js/storage.js`,
-   `js/ui.js`, más adelante `js/auth.js`, `js/sync.js`). Prioridad: aislar el
-   acceso a datos en funciones únicas (`getExpenses()`, `saveExpense()`, etc.).
-   El comportamiento visible no cambia.
-3. **Correcciones de riesgos (dentro de Fase 1).** La lista completa está en
-   §4. Se corrigen después de modularizar, con el comportamiento ya igual al
-   original y testeable.
-4. **Cloudflare Pages (dentro de Fase 1).** Crear el proyecto, publicar la
-   versión refactorizada y verificar la instalación como PWA desde el nuevo
-   dominio. GitHub Pages queda como respaldo.
-5. **Supabase (Fases 2 y 3).** Modelo de datos según `notas/03`, tablas con
-   `user_id`, RLS activado, políticas por usuario.
-6. **Autenticación opcional y migración (Fases 4 y 5).** Login opcional; el
-   modo local sigue funcionando sin cuenta. Migración de datos locales con
-   confirmación del usuario.
-7. **Sincronización (Fases 6 y 7).** Primero manual con botón y estado
-   visible; después automática moderada.
+1. **Respaldo local JSON (Fase 0).** Implementar exportación e importación antes de tocar cualquier otra cosa. El archivo debe validarse y permitir recuperar el estado sin destruir datos ante una entrada inválida.
+2. **Modularización (Fase 1).** Partir `index.html` según `01-arquitectura.md` §2. Prioridad: aislar almacenamiento y compartir el formato/validador entre `backup.js` y `drive-sync.js`.
+3. **Correcciones de riesgos (dentro de Fase 1).** Resolver la lista de §4 sin cambiar el comportamiento visible.
+4. **Cloudflare Pages (dentro de Fase 1).** Crear el proyecto, publicar y verificar la PWA desde el nuevo dominio.
+5. **Payload unificado (Fase 2).** Agregar metadatos, normalizar notas, migrar formatos viejos e incluir configuración y plantillas cuando existan.
+6. **Google Drive (Fase 3).** Configurar Google Cloud e implementar conexión, archivo remoto, botón manual, estados, conflictos y recuperación.
+7. **Formatos complementarios (Fases 4 y 5).** Agregar exportación tabular e importación por plantilla sin crear otro modelo de datos.
 
-## 4. Riesgos detectados en la revisión inicial (a corregir)
+Ninguna sincronización se implementa antes de que el respaldo local y la validación sean confiables.
 
-Todos verificados en revisión estática sobre `index.html`, `sw.js` y
-`manifest.json`:
+## 4. Riesgos detectados en la revisión inicial
 
-1. Datos solo en `localStorage`, sin exportación implementada (Fase 0 la
-   exige). Riesgo de pérdida de datos.
-2. Descripciones y notas insertadas con `innerHTML` sin escapar → XSS
-   almacenado si el contenido llega a ser externo.
-3. `JSON.parse` y escrituras sin validación ni recuperación ante datos
-   corruptos.
-4. Dos pestañas abiertas pueden pisar los datos mutuamente (cada una guarda
-   el objeto completo).
-5. Cuotas admiten valores inválidos; importes con centavos se muestran
-   redondeados.
+Todos verificados en revisión estática sobre `index.html`, `sw.js` y `manifest.json`:
+
+1. Datos solo en `localStorage`, sin exportación ni importación implementadas. Riesgo de pérdida de datos.
+2. Descripciones y notas insertadas con `innerHTML` sin escapar → XSS almacenado si el contenido llega a ser externo.
+3. `JSON.parse` y escrituras sin validación ni recuperación ante datos corruptos.
+4. Dos pestañas abiertas pueden pisar los datos mutuamente porque cada una guarda el objeto completo.
+5. Cuotas admiten valores inválidos; importes con centavos se muestran redondeados.
 6. El Service Worker borra todas las demás cachés del origen al activarse.
-7. El `manifest.json` menciona Google Sheets, cuando la arquitectura eligió
-   Supabase.
+7. El `manifest.json` menciona Google Sheets, una integración que no forma parte de la arquitectura elegida.
+
+Drive agrega riesgos que deben verificarse en Fase 3:
+
+- Tokens vencidos o permisos revocados.
+- Archivos borrados, duplicados o modificados externamente.
+- Primera conexión con datos en ambos lados.
+- Cambios simultáneos locales y remotos.
+- Respuesta de subida incierta y reintentos que puedan duplicar archivos.
+- Cambio de cuenta de Google en un dispositivo con datos existentes.
+
+Las reglas para tratarlos están en `03-modelo-datos-y-sincronizacion.md` §§7-10.
 
 ## 5. Cómo vamos a trabajar con agentes
 
 Flujo de trabajo (ODD — Organic Driven Development), en criollo:
 
-- **Cada paso grande se documenta antes de escribir código.** Se crea un
-  documento de feature (`odd/tasks/<feature>.md`) con: los pedidos textuales
-  del usuario, las tareas numeradas con su especificación, y un registro
-  (log) de decisiones y correcciones. Ese documento es la fuente de verdad
-  que leen los agentes antes de trabajar.
-- **El agente principal coordina; no escribe todo él.** Trabajo chico o
-  mecánico: lo hace inline. Unidades de comportamiento independientes y
-  pesadas (por ejemplo, "capa de storage" y "correcciones de UI" como dos
-  frentes separados): se delegan a subagentes escritores, cada uno con
-  permisos de edición acotados a sus propios archivos, para que no pisen
-  cambios entre sí.
-- **Unidad de trabajo = unidad de commit.** Se commitea en rebanadas
-  revisables (~400 líneas cambiadas), con tests y docs junto al código, y
-  mensaje de commit descriptivo. No se pushea ni se publica sin pedido
-  explícito del usuario.
-- **Verificación antes de dar por bueno.** Cada tarea se marca completada
-  solo cuando se observa que funciona (comportamiento igual al original tras
-  modularizar, por ejemplo), no porque "parece" andar.
-- **Memoria entre sesiones.** Las decisiones quedan guardadas en la memoria
-  persistente del agente (Engram), y los documentos de feature en el repo:
-  retomar no depende de recordar la charla.
+- **Cada paso grande se documenta antes de escribir código.** Se crea un documento de feature (`odd/tasks/<feature>.md`) con pedidos textuales, tareas numeradas y registro de decisiones. Ese documento es la fuente de verdad que leen los agentes.
+- **El agente principal coordina.** Trabajo chico o mecánico: inline. Unidades de comportamiento independientes y pesadas: subagentes escritores con permisos de edición acotados para no pisarse.
+- **Unidad de trabajo = unidad de commit.** Se commitea en rebanadas revisables (~400 líneas cambiadas), con tests y docs junto al código. No se pushea ni se publica sin pedido explícito del usuario.
+- **Verificación antes de dar por bueno.** Una tarea se marca completada solo cuando se observa que funciona.
+- **Memoria entre sesiones.** Las decisiones quedan guardadas en Engram y los documentos de feature en el repo.
 
-Convención de idioma: conversación y notas en español; código, comentarios y
-mensajes de commit en inglés, salvo la UI de la app que ya está en español.
+Convención de idioma: conversación y notas en español; código, comentarios y mensajes de commit en inglés, salvo la UI de la app que ya está en español.
 
-## 6. Setup de herramientas (hacer una sola vez)
+## 6. Setup de herramientas
 
-Requisitos: Node.js instalado (ya está: v24). Todo lo demás corre con `npx`.
+Requisito: Node.js instalado (ya está: v24). Cloudflare se administra con `npx`; Google Cloud se configura desde su consola.
 
 ### 6.1 Cloudflare
 
-`wrangler` es la CLI oficial de Cloudflare (Workers, Pages, D1). Ya verificada
-en esta máquina (v4.167.0 vía `npx`).
+`wrangler` es la CLI oficial de Cloudflare. Ya fue verificada en esta máquina (v4.167.0 vía `npx`).
 
 ```bash
-npx wrangler login        # abre el navegador y autoriza (OAuth)
-npx wrangler whoami       # verifica la cuenta
+npx wrangler login
+npx wrangler whoami
 npx wrangler pages project list
 ```
 
-El token queda guardado localmente en la PC; ninguna contraseña pasa por el
-chat. Alternativa más restringida: crear en el dashboard un token de solo
-lectura (permisos Pages/Workers/D1 Read) y exportarlo como
-`CLOUDFLARE_API_TOKEN` antes de correr wrangler.
+El token queda guardado localmente en la PC; ninguna contraseña pasa por el chat. Como alternativa restringida, usar un token de Cloudflare con solo los permisos necesarios y exportarlo como `CLOUDFLARE_API_TOKEN` antes de ejecutar wrangler.
 
-### 6.2 Supabase
+### 6.2 Google Cloud y Drive
 
-1. Entrar a https://supabase.com/dashboard → Account → **Access Tokens** →
-   "Generate new token" (copiarlo; solo se muestra una vez).
-2. Autenticar la CLI (no requiere instalación global; `npx` baja el binario):
+1. Crear o seleccionar un proyecto en Google Cloud Console.
+2. Habilitar **Google Drive API**.
+3. Configurar la pantalla de consentimiento OAuth.
+4. Mientras la app esté en pruebas, registrar las cuentas Google autorizadas como usuarios de prueba.
+5. Crear credenciales OAuth de tipo **Aplicación web**.
+6. Agregar los orígenes JavaScript del dominio final, del dominio de Cloudflare Pages utilizado y de `localhost` con su puerto.
+7. Incorporar el Client ID en la configuración pública del frontend cuando se implemente Fase 3.
 
-```bash
-npx supabase login        # pega el Access Token
-npx supabase projects list
-```
+No se necesita un Client Secret para el modelo de tokens de GIS en el navegador. La primera autorización real se hará desde el botón de la app y no pasará por el chat.
 
-Opcional para tenerlo fijo: `npm install -g supabase`.
-
-Con eso el agente puede listar proyectos, leer el esquema y volcar la base.
-
-### 6.3 Checklist de "todo listo para arrancar"
+### 6.3 Checklist de preparación
 
 - [ ] `npx wrangler whoami` muestra la cuenta de Cloudflare.
-- [ ] `npx supabase projects list` muestra el proyecto (o la lista vacía, si
-      todavía no se crea: crear el proyecto es tarea de Fase 3, no del setup).
-- [ ] `notas/04-plan-de-trabajo.md` leído por el agente antes de empezar.
+- [ ] Existe un proyecto de Google Cloud con Drive API habilitada.
+- [ ] La pantalla OAuth y los usuarios de prueba están configurados.
+- [ ] Existe un Client ID web con todos los orígenes necesarios.
+- [ ] `notas/04-plan-de-trabajo.md` fue leído antes de empezar.
 
-## 7. Reglas de seguridad de credenciales
+La configuración de Google puede prepararse antes de Fase 3, pero no reemplaza las fases de respaldo y validación.
 
-1. Ninguna contraseña ni clave se escribe nunca en el chat: los logins
-   guardan todo localmente.
-2. La clave `anon` de Supabase es pública por diseño: va en el frontend.
-3. La clave `service_role` **jamás** entra al frontend, al chat ni a ningún
-   commit: con esa clave se saltean todas las reglas de seguridad.
-4. Tokens de solo lectura cuando el alcance lo permita.
+## 7. Reglas de seguridad y credenciales
 
-## 8. Operación continua (cuando Supabase esté activo)
+1. Ninguna contraseña, token o clave privada se escribe en el chat ni en el repositorio.
+2. El Client ID web de Google es público por diseño y puede estar en el frontend.
+3. No se agregará un Client Secret ni credenciales administrativas al frontend.
+4. Se solicitará únicamente `https://www.googleapis.com/auth/drive.file`.
+5. Los tokens de acceso no se guardan en `localStorage`, en el JSON ni en logs.
+6. La UI deberá mostrar errores sin exponer tokens ni respuestas sensibles.
+7. Los textos importados o descargados se consideran contenido externo y requieren validación y renderizado seguro.
 
-- **Anti-pausa:** el plan gratuito pausa el proyecto tras 7 días de baja
-  actividad. Mitigación: tarea programada gratuita (por ejemplo cron-job.org)
-  que consulte la API del proyecto cada 2 o 3 días. Un proyecto pausado se
-  restaura desde el dashboard y queda recuperable 90 días.
-- **Backups:** el plan gratuito no incluye backups diarios. Mitigación:
-  respaldo semanal con `npx supabase db dump` (o `pg_dump`), guardado fuera
-  de la nube (PC personal o drive). Los usuarios confían sus datos al
-  propietario de la cuenta; el backup es responsabilidad del propietario.
-- **Doble respaldo por diseño:** copia local en el dispositivo del usuario
-  (offline-first) + copia en Supabase. Si Supabase se cae, la app sigue
-  andando; si el usuario pierde el dispositivo, los datos siguen en la nube.
+## 8. Operación y respaldos con Drive
 
-## 9. Pendientes de la segunda revisión (no contemplados en la primera)
+- No se necesita cron anti-pausa ni mantenimiento de una base compartida.
+- Cada usuario controla su archivo `APK Gastos/apk-gastos-data.json` y su cuota de Drive.
+- La app mantiene una copia local para uso offline y una copia remota cuando el usuario sincroniza.
+- El archivo remoto principal no garantiza historial: Drive puede eliminar revisiones antiguas no fijadas.
+- La exportación manual JSON se conserva como respaldo independiente.
+- Antes de importar o descargar una versión que reemplace datos, la app genera un backup local.
+- Desconectar Google no borra datos locales ni remotos.
+- Los backups remotos con fecha y política de retención quedan para una mejora posterior.
 
-Revisando `index.html`, `sw.js` y `manifest.json` contra estas notas aparecieron
-cosas que la primera revisión no anotó. No son riesgos de datos, pero conviene
-resolverlas antes o durante la migración:
+## 9. Pendientes de las revisiones anteriores
 
-1. **Nombre de la app inconsistente.** Hay cuatro nombres: repo "APK Gastos",
-   `<title>` "Control de Gastos Pro", manifest "Mi Control Financiero Pro" /
-   "Finanzas Pro" y encabezado de la app "FINANZAS". Elegir uno y aplicarlo en
-   todos lados (Fase 1).
-2. **Ícono desde CDN.** El manifest apunta el ícono a Flaticon (URL remota).
-   Offline o al instalar la PWA, el ícono puede faltar. Guardarlo local en el
-   repo y cachearlo en el Service Worker (Fase 1).
-3. **Color de tema desincronizado.** El manifest declara `theme_color`
-   `#0d6efd`, el HTML arranca con `#2c3e50`, y el cambio de tema pisa el color
-   por JavaScript. Dejarlos coherentes (Fase 1).
-4. **Falta la tabla de equivalencias de campos para la migración.** La app
-   guarda campos en español; el modelo nuevo usa inglés. El mapeo y las
-   decisiones quedaron en `notas/03-modelo-datos-y-sincronizacion.md` §12.1
-   (Fase 2).
-5. **Campo de notas duplicado.** La app escribe `notas` pero al leer busca
-   `notes || notas`. Unificar en `notes` antes de migrar (Fase 2).
-6. **Categorías custom sin destino.** `config.cat_ing` y `config.cat_gas`
-   viven dentro del objeto de datos; el modelo nuevo no define dónde van. Sin
-   decisión, se pierden (Fase 2).
+Estos puntos siguen siendo trabajo de implementación aunque su destino ya esté definido en las notas:
+
+1. **Nombre de la app inconsistente.** Elegir uno y aplicarlo en repo, título, manifest y encabezado (Fase 1).
+2. **Ícono desde CDN.** Guardarlo local y cachearlo en el Service Worker (Fase 1).
+3. **Color de tema desincronizado.** Alinear manifest, HTML y cambios por JavaScript (Fase 1).
+4. **Migración del formato actual.** La app conserva campos en español; la normalización y compatibilidad están definidas en `notas/03` §5 (Fases 0 y 2).
+5. **Campo de notas duplicado.** La app escribe `notas` y lee `notes || notas`; migrar a `notes` sin perder datos (Fases 0 y 2).
+6. **Categorías y configuración.** `config.cat_ing`, `config.cat_gas`, `config.presupuesto` y `plantillas_fijas` viajan dentro del mismo JSON; falta implementar las mejoras que aún no existen.
+7. **Manifest desactualizado.** Reemplazar la referencia a Google Sheets por la descripción real de la app, sin afirmar que Drive ya está implementado (Fase 1).

@@ -8,7 +8,7 @@ APK Gastos es una aplicación personal de control de gastos diseñada para ser:
 - Rápida.
 - Fácil de usar desde el celular y el navegador.
 - Utilizable sin conexión.
-- Capaz de sincronizar datos entre dispositivos.
+- Capaz de sincronizar datos entre dispositivos bajo control del usuario.
 - Sencilla de mantener y evolucionar.
 
 El objetivo inmediato no es convertirla en un producto comercial masivo, sino ofrecer una herramienta gratuita y confiable para un grupo reducido de usuarios.
@@ -31,35 +31,35 @@ Tecnologías actuales:
 
 El usuario puede instalarla desde Google Chrome y utilizarla como si fuera una aplicación móvil.
 
-Actualmente, los datos quedan almacenados únicamente en el dispositivo donde fueron creados.
+Actualmente, los datos quedan almacenados únicamente en el dispositivo donde fueron creados. No existe todavía exportación, importación ni sincronización remota.
 
 ## 3. Problema que se quiere resolver
 
 El almacenamiento local tiene limitaciones:
 
-- Los datos no aparecen automáticamente en otros dispositivos.
+- Los datos no aparecen en otros dispositivos.
 - El usuario puede perder información si borra los datos del navegador o cambia de teléfono.
-- No existe autenticación.
-- No existe una copia centralizada de los datos.
+- No existe una copia remota recuperable.
 
-La evolución propuesta consiste en permitir que el usuario cree una cuenta, inicie sesión y sincronice sus datos con la nube sin perder la posibilidad de trabajar offline.
+La evolución propuesta consiste en permitir que el usuario conecte opcionalmente su cuenta de Google y guarde una copia de sus datos en su propio Google Drive, sin perder la posibilidad de trabajar offline.
+
+La aplicación no requerirá crear una cuenta propia ni dependerá de una base de datos central administrada por el proyecto.
 
 ## 4. Decisión principal de arquitectura
 
 Se utilizará:
 
 - Cloudflare Pages para alojar la PWA.
-- Supabase Auth para el registro e inicio de sesión.
-- Supabase Database para guardar los datos.
-- `localStorage` o IndexedDB como almacenamiento local y soporte offline.
+- `localStorage` como almacenamiento local inicial y soporte offline.
+- Google Identity Services (GIS) para la autorización OAuth en el navegador.
+- Google Drive API para guardar y recuperar un archivo JSON por usuario.
+- El permiso `https://www.googleapis.com/auth/drive.file`, limitado a los archivos creados o habilitados para la aplicación.
 
-Por ahora no se desarrollará un backend propio.
+No se desarrollará un backend propio ni se utilizará Supabase. La copia remota vivirá en una carpeta visible del Google Drive de cada usuario, por ejemplo `APK Gastos/`, y no en infraestructura del propietario de la app.
+
+La sincronización será manual mediante un botón **Sincronizar**. El usuario podrá seguir usando toda la funcionalidad local sin conectar Google Drive.
 
 Cloudflare se eligió como hosting porque ya existe una cuenta con un proyecto pequeño funcionando en el plan gratuito.
-
-Para la base de datos se evaluó D1 (el SQLite alojado de Cloudflare) y se descartó para esta etapa: con pocos usuarios la capacidad no es el problema, y Supabase resuelve la autenticación y el aislamiento por usuario (RLS) sin escribir código de seguridad propio. D1 y un backend propio quedan como alternativa futura si cambian los requisitos.
-
-La aplicación JavaScript podrá comunicarse directamente con Supabase mediante su API y su cliente oficial.
 
 ## 5. Principios del proyecto
 
@@ -67,31 +67,39 @@ La aplicación JavaScript podrá comunicarse directamente con Supabase mediante 
 
 No se agregará infraestructura que todavía no sea necesaria.
 
+La primera sincronización utilizará una foto completa de los datos en JSON, sin fusión automática registro por registro.
+
 ### 5.2 No romper lo que ya funciona
 
 Las versiones nuevas deberán conservar los datos locales existentes y permitir una migración gradual.
 
-### 5.3 Autenticación opcional al comienzo
+Toda importación o descarga que reemplace datos deberá validar el contenido y generar antes una copia local de seguridad.
 
-El usuario podrá seguir usando la aplicación localmente. Crear una cuenta será una opción para habilitar respaldo y sincronización.
+### 5.3 Conexión opcional
 
-### 5.4 Una sola base de datos
+El usuario podrá seguir usando la aplicación localmente. Conectar Google Drive será una opción para habilitar respaldo remoto y sincronización entre dispositivos.
 
-No se creará una base de datos ni una tabla por usuario.
+Conectar no significa conservar para siempre un token de acceso: los tokens vencen y la app podrá solicitar uno nuevo durante una acción explícita del usuario.
 
-Los datos de todos los usuarios estarán en tablas compartidas y cada registro incluirá un `user_id`.
+### 5.4 Datos personales en el Drive del usuario
 
-Las políticas de seguridad de Supabase deberán garantizar que cada usuario solo pueda acceder a sus propios datos.
+No se crearán tablas compartidas ni registros con `user_id`.
+
+Cada usuario tendrá su propio archivo de datos en su Drive. La aplicación no ofrecerá una base compartida entre usuarios ni permitirá ver los datos de otras cuentas.
+
+El alcance `drive.file` limita el acceso de la app, pero no cifra el contenido ni impide que el usuario u otras aplicaciones autorizadas accedan al archivo.
 
 ### 5.5 Offline como característica central
 
 La aplicación debe continuar siendo útil sin conexión.
 
-La nube no reemplazará inmediatamente el almacenamiento local: funcionará como respaldo y mecanismo de sincronización.
+La copia local seguirá siendo la fuente de trabajo. Drive funcionará como respaldo remoto y mecanismo de sincronización cuando el usuario lo solicite.
 
 ### 5.6 Evolución por etapas
 
 Cada etapa deberá quedar estable antes de comenzar la siguiente.
+
+Primero se implementará respaldo local y preparación del JSON; después, integración con Drive y sincronización manual. La sincronización automática queda fuera del alcance inicial.
 
 ## 6. Funciones principales
 
@@ -103,14 +111,15 @@ Cada etapa deberá quedar estable antes de comenzar la siguiente.
 - Consultar información por mes y año.
 - Instalar la aplicación como PWA.
 - Trabajar offline.
-- Crear una cuenta e iniciar sesión.
-- Sincronizar datos entre dispositivos.
-- Exportar datos.
-- Importar datos mediante una plantilla controlada.
+- Exportar e importar respaldos JSON.
+- Conectar y desconectar Google Drive.
+- Sincronizar manualmente entre dispositivos.
+- Elegir cómo resolver un conflicto sin pisar datos automáticamente.
+- Importar datos posteriormente mediante una plantilla controlada.
 
 ## 7. Excel y archivos
 
-La base de datos será la fuente principal de información.
+Los datos locales serán la fuente principal de información y el archivo de Drive conservará el mismo formato JSON versionado que los respaldos manuales.
 
 Excel o CSV se utilizarán como formatos complementarios para:
 
@@ -119,21 +128,19 @@ Excel o CSV se utilizarán como formatos complementarios para:
 - Analizar información.
 - Importar datos mediante una plantilla definida por la aplicación.
 
-La primera versión de importación no intentará interpretar cualquier archivo creado por el usuario.
-
-Se entregará una plantilla con columnas conocidas. Una importación flexible con mapeo de columnas podrá evaluarse en el futuro.
+La primera versión de importación tabular no intentará interpretar cualquier archivo creado por el usuario. Se entregará una plantilla con columnas conocidas.
 
 ## 8. Cuándo considerar un backend propio
 
 No se necesita un servidor propio para:
 
-- Autenticación con Supabase.
-- Guardar y consultar gastos.
-- Sincronizar datos.
+- Solicitar autorización OAuth desde el navegador.
+- Guardar y consultar el archivo JSON en Google Drive.
 - Exportar CSV o Excel desde el navegador.
 - Importar una plantilla desde el navegador.
+- Sincronizar manualmente una foto completa de los datos.
 
-Podría ser necesario un backend propio cuando aparezcan necesidades como:
+Podría ser necesario un backend propio cuando aparezcan requisitos como:
 
 - Envío automático de correos.
 - Procesamiento programado.
@@ -144,17 +151,20 @@ Podría ser necesario un backend propio cuando aparezcan necesidades como:
 - Tareas recurrentes.
 - Uso de claves secretas que no puedan exponerse en el frontend.
 
+Un cambio hacia sincronización automática, colaboración simultánea o fusión de cambios por registro requeriría revisar la arquitectura antes de implementarlo.
+
 ## 9. Escala inicial
 
-El proyecto está pensado inicialmente para aproximadamente 5 a 20 usuarios.
+El proyecto está pensado inicialmente para aproximadamente 5 a 20 usuarios, principalmente en uso personal.
 
-Para esa escala, Supabase ofrece capacidad más que suficiente para manejar registros de gastos y sincronizaciones normales.
+Google Drive evita administrar capacidad, aislamiento por usuario, pausas de base de datos y backups de una infraestructura compartida. Cada usuario conserva el control de su copia remota.
 
 El foco no debe estar en optimizar para millones de usuarios, sino en:
 
 - Evitar pérdida de datos.
+- Detectar cambios locales y remotos antes de escribir.
+- Resolver conflictos de forma comprensible.
 - Mantener una experiencia rápida.
-- Implementar una sincronización confiable.
 - Facilitar el mantenimiento del código.
 
 ## 10. Regla para nuevas funciones

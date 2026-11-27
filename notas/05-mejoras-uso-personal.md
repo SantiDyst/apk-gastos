@@ -19,8 +19,9 @@ probar por separado, en el orden en que aparecen.
 
 ### Reglas de negocio
 
-- El usuario puede exportar todos sus datos (ingresos, gastos, tarjetas y
-  categorías) a un archivo JSON descargable.
+- El usuario puede exportar todos sus datos (ingresos, gastos, tarjetas,
+  categorías y demás configuraciones o plantillas implementadas) a un archivo
+  JSON descargable.
 - El archivo exportado debe permitir recuperar el estado exacto al importarlo.
 - El nombre del archivo incluye la fecha, por ejemplo
   `apk-gastos-backup-2026-11-23.json`.
@@ -28,8 +29,14 @@ probar por separado, en el orden en que aparecen.
   forma esperada, se muestra un error y no se modifica ningún dato.
 - Importar pide confirmación y, antes de pisar los datos actuales, genera un
   backup automático con el mismo formato de exportación.
-- El formato exportado es el objeto `db` completo tal como se guarda
-  (`principal`, `tarjetas`, `config`).
+- El formato vigente agrega a `principal`, `tarjetas`, `config` y
+  `plantillas_fijas` los metadatos `schema_version`, `dataset_id`, `revision`,
+  `updated_at` y `device_label` opcional, según `notas/03`.
+- La importación acepta el objeto `db` anterior (`principal`, `tarjetas`,
+  `config`) y registros con `notas`; la exportación nueva escribe el formato
+  versionado y el campo normalizado `notes`.
+- La futura sincronización con Google Drive reutiliza exactamente este formato,
+  sus migraciones y su validador; no define un JSON paralelo.
 
 ### Casos de uso
 
@@ -40,13 +47,16 @@ probar por separado, en el orden en que aparecen.
 
 ### Tareas
 
-1. Botón "Exportar" en la UI que descarga el JSON de `db`.
+1. Botón "Exportar" en la UI que descarga el JSON versionado de `db`.
 2. Botón "Importar" con selector de archivo: leer, `JSON.parse` con
-   `try/catch`, validar estructura, confirmar y cargar.
-3. Validación: `principal`, `tarjetas` y `config` deben existir y tener la
-   forma esperada.
-4. Backup automático antes de reemplazar en la importación.
-5. Mensajes claros de éxito o error.
+   `try/catch`, validar estructura, migrar si corresponde, confirmar y cargar.
+3. Validación: metadatos compatibles y colecciones `principal`, `tarjetas`,
+   `config` y `plantillas_fijas` cuando corresponda, con todos sus campos y
+   valores válidos.
+4. Compatibilidad con el formato anterior y migración de `notas` a `notes`.
+5. Backup automático antes de reemplazar en la importación.
+6. Mensajes claros de éxito o error.
+7. Dejar el serializador y validador disponibles para reutilizarlos en Drive.
 
 ---
 
