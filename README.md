@@ -173,8 +173,20 @@ el proyecto si todavía no existe.
    (`apk-gastos-v4.0.0-<hash>` en `dist/sw.js`): si el hash no cambió, no había
    cambios en los assets y la caché vieja sigue siendo válida.
 
-El deploy no está ejecutado todavía: esta entrega deja el armado y la
-configuración listos para publicar.
+El primer deploy ya se hizo con integración Git, desde la rama
+`feat/google-drive-sync`. Cloudflare publica una URL estable por rama y una URL
+nueva por cada deploy:
+
+- Alias de la rama: `https://feat-google-drive-sync.apk-gastos.pages.dev`
+- URL del deploy puntual: `https://<hash>.apk-gastos.pages.dev`
+
+La rama de producción (`master`) todavía no está publicada, así que
+`https://apk-gastos.pages.dev` aún no existe.
+
+**Importante**: la URL `<hash>.apk-gastos.pages.dev` cambia en cada deploy. Para
+Google Cloud hay que registrar el **alias estable de la rama** (y más adelante el
+dominio de producción), no la URL con hash, o OAuth deja de funcionar en el
+siguiente push.
 
 ## Pruebas
 
