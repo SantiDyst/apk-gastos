@@ -139,54 +139,49 @@ El armado además hace dos controles:
   (`apk-gastos-v4.0.0-<hash>`). Así cada deploy con cambios invalida solo el
   caché anterior, sin editar el número a mano.
 
-### Opción A — integración con Git (recomendada)
+### Cómo se publica
 
-1. Subir la rama a GitHub (`git push origin feat/google-drive-sync`).
-2. En el panel de Cloudflare: **Workers & Pages → Create → Pages → Connect to
-   Git**, repositorio `SantiDyst/apk-gastos`.
-3. Rama de producción: `master`.
-4. Build command: `npm run build`. Build output directory: `dist`.
-5. Cada push a la rama de producción publica; las demás ramas generan previews
-   con su propia URL.
-
-### Opción B — subida directa con Wrangler
+El proyecto de Cloudflare Pages se creó con **subida directa**: no está conectado a
+GitHub, así que los push no publican nada. La publicación es manual y siempre
+sale a producción con:
 
 ```bash
-npm run build
-npx wrangler login
 npm run deploy
 ```
 
-`npm run deploy` publica `dist/` en el proyecto `apk-gastos` usando
-`wrangler pages deploy`. La primera ejecución descarga wrangler vía `npx` y crea
-el proyecto si todavía no existe.
+`npm run deploy` arma `dist/` y sube ese contenido desde un directorio temporal
+fuera del repositorio. Ese detalle no es cosmético: `wrangler pages deploy` toma
+la rama del checkout actual como rama del deploy, y dentro del repo eso publica
+un **preview** (`feat-google-drive-sync.apk-gastos.pages.dev`) en vez de
+producción. Fuera de un worktree Git, wrangler publica en
+`https://apk-gastos.pages.dev`.
 
-### Después del primer deploy
+URLs del proyecto:
 
-1. Registrar en Google Cloud los orígenes del dominio publicado
-   (`https://<proyecto>.pages.dev` y el dominio propio si se agrega), además de
-   `http://localhost:8080`, sin barra final. Sin este paso OAuth falla con
-   `403 access_denied`.
+- Producción: `https://apk-gastos.pages.dev`
+- Previews históricos: `https://<hash>.apk-gastos.pages.dev` y un alias por rama
+  publicada (`master-`, `production-`, `feat-google-drive-sync-`).
+
+Los aliases de rama y las URLs con hash cambian o se multiplican, así que en
+Google Cloud hay que registrar **solo el dominio de producción**.
+
+### Migrar a integración con Git (opcional)
+
+Cloudflare no permite convertir a Git un proyecto creado por subida directa.
+Para publicar automáticamente en cada push habría que crear un proyecto nuevo
+(rama de producción `master`, build `npm run build`, salida `dist`), lo que
+implica un dominio nuevo y volver a registrar el origen en Google Cloud.
+
+### Después de cada deploy
+
+1. Registrar en Google Cloud los orígenes publicados
+   (`https://apk-gastos.pages.dev`, más `http://localhost:8080`), sin barra final.
+   Sin este paso OAuth falla con `403 access_denied`.
 2. Probar la conexión desde el dominio HTTPS: es el único origen donde se puede
    instalar la PWA y probar Chrome móvil.
 3. Confirmar que el sitio sirva el `sw.js` del último armado
    (`apk-gastos-v4.0.0-<hash>` en `dist/sw.js`): si el hash no cambió, no había
    cambios en los assets y la caché vieja sigue siendo válida.
-
-El primer deploy ya se hizo con integración Git, desde la rama
-`feat/google-drive-sync`. Cloudflare publica una URL estable por rama y una URL
-nueva por cada deploy:
-
-- Alias de la rama: `https://feat-google-drive-sync.apk-gastos.pages.dev`
-- URL del deploy puntual: `https://<hash>.apk-gastos.pages.dev`
-
-La rama de producción (`master`) todavía no está publicada, así que
-`https://apk-gastos.pages.dev` aún no existe.
-
-**Importante**: la URL `<hash>.apk-gastos.pages.dev` cambia en cada deploy. Para
-Google Cloud hay que registrar el **alias estable de la rama** (y más adelante el
-dominio de producción), no la URL con hash, o OAuth deja de funcionar en el
-siguiente push.
 
 ## Pruebas
 

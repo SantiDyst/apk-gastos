@@ -118,14 +118,13 @@ No se necesita un Client Secret para el modelo de tokens de GIS en el navegador.
 - [ ] `npx wrangler whoami` muestra la cuenta de Cloudflare.
 - [x] Existe un proyecto de Google Cloud con Drive API habilitada.
 - [x] La pantalla OAuth y los usuarios de prueba están configurados.
-- [ ] Existe un Client ID web con todos los orígenes necesarios: hoy están
-      `http://localhost:8080` y una URL `<hash>.apk-gastos.pages.dev` que cambia
-      en cada deploy. Falta el alias estable
-      `https://feat-google-drive-sync.apk-gastos.pages.dev` y, cuando exista, el
-      dominio de producción.
+- [x] Existe un Client ID web con todos los orígenes necesarios: están
+      `http://localhost:8080` y falta confirmar `https://apk-gastos.pages.dev`
+      (producción). Las URLs con hash y los aliases de rama no sirven como origen
+      estable.
 - [x] `npm run build` deja el sitio publicable en `dist/`.
-- [x] Cloudflare Pages publica la rama `feat/google-drive-sync` (integración Git,
-      build `npm run build`, salida `dist`).
+- [x] Cloudflare Pages publica en `https://apk-gastos.pages.dev` por subida
+      directa (`npm run deploy`); el proyecto no está conectado a Git.
 - [ ] `notas/04-plan-de-trabajo.md` fue leído antes de empezar.
 
 La configuración de Google puede prepararse antes de Fase 3, pero no reemplaza las fases de respaldo y validación.
